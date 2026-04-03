@@ -41,10 +41,10 @@ brew install ampcmd
 Add to your shell config:
 ```bash
 # zsh (~/.zshrc)
-source $(brew --prefix)/opt/ampcmd/zsh/ampcmd.plugin.zsh
+source $(brew --prefix ampcmd)/ampcmd.plugin.zsh
 
 # bash (~/.bashrc)
-source $(brew --prefix)/opt/ampcmd/bash/ampcmd.bash
+source $(brew --prefix ampcmd)/ampcmd.bash
 
 # fish (~/.config/fish/config.fish)
 bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
