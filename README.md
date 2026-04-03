@@ -140,7 +140,34 @@ chainhist
 
 # Show last 50 commands
 chainhist 50
+
+# View and select from chain history
+chainhist -l
 ```
+
+## History Tracking
+
+chainhist automatically records all executed chains to `~/.chainhist_history`.
+
+### Viewing Chain History
+
+```bash
+# View and rerun previous chains
+chainhist -l
+```
+
+This opens an fzf interface showing your chain history (most recent first). Select any chain to execute it again, or press CTRL-Y to copy it to the clipboard.
+
+### Disabling History Recording
+
+Create a config file at `~/.config/chainhist/config` (or `~/.chainhist.conf`):
+
+```bash
+# ~/.config/chainhist/config
+DISALLOW_HISTORY=true
+```
+
+This prevents chainhist from recording your chains.
 
 ## Keybindings
 
@@ -149,6 +176,8 @@ chainhist 50
 | `TAB` | Toggle selection + move down |
 | `SPACE` | Toggle selection (no movement) |
 | `SHIFT+TAB` | Toggle selection + move up |
+| `RIGHT ARROW` | Select command + move down |
+| `LEFT ARROW` | Deselect command |
 | `ENTER` | Execute chain immediately |
 | `CTRL+Y` | Copy chain to clipboard |
 | `ESC` | Cancel |
