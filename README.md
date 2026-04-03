@@ -34,7 +34,7 @@ Result: git fetch origin && git reset --hard origin/main && docker compose down
 ### Homebrew (macOS)
 
 ```bash
-brew tap YOUR/tap
+brew tap soundslikeinfo/chainhist
 brew install chainhist
 ```
 
@@ -53,7 +53,7 @@ bind \ch 'chainhist | begin; read -l key; read -l cmd; and begin; switch "$key";
 ### curl (One-liner)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR/chainhist/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/soundslikeinfo/chainhist/main/install.sh | bash
 ```
 
 Auto-detects your shell and installs appropriate version.
@@ -66,7 +66,7 @@ Auto-detects your shell and installs appropriate version.
 #### zsh
 
 ```bash
-git clone https://github.com/YOUR/chainhist.git ~/.local/share/chainhist
+git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
 echo 'source ~/.local/share/chainhist/src/chainhist.plugin.zsh' >> ~/.zshrc
 exec $SHELL
 ```
@@ -74,7 +74,7 @@ exec $SHELL
 #### fish
 
 ```bash
-git clone https://github.com/YOUR/chainhist.git ~/.local/share/chainhist
+git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
 mkdir -p ~/.config/fish/functions
 cp ~/.local/share/chainhist/src/chainhist.fish ~/.config/fish/functions/
 
@@ -86,7 +86,7 @@ exec $SHELL
 #### bash
 
 ```bash
-git clone https://github.com/YOUR/chainhist.git ~/.local/share/chainhist
+git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
 echo 'source ~/.local/share/chainhist/src/chainhist.bash' >> ~/.bashrc
 exec $SHELL
 ```
@@ -95,7 +95,7 @@ exec $SHELL
 
 ```bash
 # Clone to your Code directory
-git clone https://github.com/YOUR/chainhist.git ~/Code/chainhist
+git clone https://github.com/soundslikeinfo/chainhist.git ~/Code/chainhist
 
 # Add to PATH
 export PATH="$HOME/Code/chainhist/bin:$PATH"
@@ -202,7 +202,7 @@ User presses action key:
 ## Contributing
 
 ```bash
-git clone https://github.com/YOUR/chainhist.git
+git clone https://github.com/soundslikeinfo/chainhist.git
 cd chainhist
 
 # Test zsh version
@@ -227,6 +227,4 @@ If you see an error about empty history or `fzf` shows a list of files instead o
 
 ## License
 
-MITcense
-
-MIT
+MIT License

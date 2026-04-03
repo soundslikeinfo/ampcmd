@@ -1,0 +1,29 @@
+# Compiled shell scripts
+*.zwc
+*.zwc.old
+*.zcompdump
+*.zcompdump.old
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor swap files
+*.swp
+*.swo
+*~
+.*.swp
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test artifacts
+/tmp/
+*.test
+
+# Distribution packages
+*.tar.gz
+*.zip

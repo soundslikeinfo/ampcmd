@@ -1,10 +1,10 @@
 class Chainhist < Formula
   desc "Chain multiple shell history commands using fuzzy selection"
-  homepage "https://github.com/YOUR/chainhist"
-  url "https://github.com/YOUR/chainhist/archive/refs/tags/v0.1.0.tar.gz"
+  homepage "https://github.com/soundslikeinfo/chainhist"
+  url "https://github.com/soundslikeinfo/chainhist/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "REPLACE_WITH_ACTUAL_SHA256"
   license "MIT"
-  head "https://github.com/YOUR/chainhist.git", branch: "main"
+  head "https://github.com/soundslikeinfo/chainhist.git", branch: "main"
 
   depends_on "fzf"
 

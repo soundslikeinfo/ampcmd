@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # install.sh - Install chainhist for your shell
-# Usage: curl -sSL https://raw.githubusercontent.com/YOUR/chainhist/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/soundslikeinfo/chainhist/main/install.sh | bash
 #
 # Auto-detects shell (zsh/fish/bash) and installs appropriate version.
 # Supports: macOS (Homebrew), Linux (Debian/Ubuntu/Arch/Fedora)
 
 set -e
 
-REPO_URL="https://github.com/YOUR/chainhist"
+REPO_URL="https://github.com/soundslikeinfo/chainhist"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/chainhist}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 
