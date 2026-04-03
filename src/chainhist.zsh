@@ -43,6 +43,8 @@ chainhist() {
             --bind 'tab:toggle+down' \
             --bind 'space:toggle' \
             --bind 'shift-tab:toggle+up' \
+            --bind 'right:select+down' \
+            --bind 'left:deselect' \
             --bind 'ctrl-y:accept' \
             --bind 'start:first' \
             --prompt="Select commands > " \

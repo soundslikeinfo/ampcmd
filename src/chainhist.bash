@@ -29,7 +29,7 @@ chainhist() {
 		tail -n "$num_lines" |
 		awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' |
 		awk '!seen[$0]++' |
-		nl -w3 -s' │ ' | \
+		nl -w3 -s' │ ' |
 		fzf \
 			--multi \
 			--tac \
@@ -39,6 +39,8 @@ chainhist() {
 			--bind 'tab:toggle+down' \
 			--bind 'space:toggle' \
 			--bind 'shift-tab:toggle+up' \
+			--bind 'right:select+down' \
+			--bind 'left:deselect' \
 			--bind 'ctrl-y:accept' \
 			--prompt="Select commands > " \
 			--preview "$preview_cmd" \
