@@ -113,6 +113,43 @@ ln -sf ~/Code/ampcmd/src/ampcmd-preview.sh ~/.config/fish/functions/ampcmd-previ
 echo "bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch \"\$key\"; case ctrl-y; echo -n \"\$cmd\" | pbcopy; or echo -n \"\$cmd\" | xclip -selection clipboard; or echo -n \"\$cmd\" | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \"\$cmd\"; commandline -f execute; end; end; end'" >> ~/.config/fish/config.fish
 ```
 
+## Uninstallation
+
+### Homebrew
+
+```bash
+brew uninstall ampcmd
+brew untap soundslikeinfo/ampcmd
+```
+
+Remove the shell configuration lines you added to:
+- `~/.zshrc` (zsh)
+- `~/.bashrc` (bash)
+- `~/.config/fish/config.fish` (fish)
+
+### Manual Installation
+
+```bash
+# Remove installation directory
+rm -rf ~/.local/share/ampcmd
+
+# Remove from shell configuration
+# Edit ~/.zshrc and remove: source ~/.local/share/ampcmd/src/ampcmd.plugin.zsh
+# Edit ~/.bashrc and remove: source ~/.local/share/ampcmd/src/ampcmd.bash
+
+# For fish, remove:
+rm ~/.config/fish/functions/ampcmd.fish
+rm ~/.config/fish/functions/ampcmd-preview.sh
+# And remove the bind command from ~/.config/fish/config.fish
+```
+
+### Remove History File
+
+```bash
+rm ~/.ampcmd_history
+rm -rf ~/.config/ampcmd
+```
+
 ## Usage
 
 ### Interactive Mode (CTRL-H)
@@ -227,6 +264,36 @@ User presses action key:
 | fzf Ctrl-R | ✅ | ❌ List order | zsh/fish/bash |
 | McFly | ❌ | N/A | zsh/bash |
 | Atuin | ❌ | N/A | zsh/fish/bash |
+
+## Updating
+
+### Homebrew (Recommended)
+
+When new versions are released, simply run:
+
+```bash
+brew upgrade ampcmd
+```
+
+Homebrew formula updates automatically when new releases are published.
+
+### Manual Installation
+
+```bash
+cd ~/.local/share/ampcmd
+git pull
+```
+
+## Release Process
+
+Releases are automated via GitHub Actions:
+
+1. New version tagged on GitHub
+2. GitHub release published
+3. Homebrew formula automatically updated with new SHA256
+4. Users can immediately upgrade via `brew upgrade`
+
+No manual formula maintenance required.
 
 ## Contributing
 
