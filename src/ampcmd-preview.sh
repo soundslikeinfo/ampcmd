@@ -1,5 +1,5 @@
 #!/bin/sh
-# chainhist-preview - Preview script for chainhist
+# ampcmd-preview - Preview script for ampcmd
 # Called by fzf with selected items as arguments
 
 # Silence locale warnings on systems where they aren't configured

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# install.sh - Install chainhist for your shell
-# Usage: curl -sSL https://raw.githubusercontent.com/soundslikeinfo/chainhist/main/install.sh | bash
+# install.sh - Install ampcmd for your shell
+# Usage: curl -sSL https://raw.githubusercontent.com/soundslikeinfo/ampcmd/main/install.sh | bash
 #
 # Auto-detects shell (zsh/fish/bash) and installs appropriate version.
 # Supports: macOS (Homebrew), Linux (Debian/Ubuntu/Arch/Fedora)
 
 set -e
 
-REPO_URL="https://github.com/soundslikeinfo/chainhist"
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/chainhist}"
+REPO_URL="https://github.com/soundslikeinfo/ampcmd"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/ampcmd}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 
 # Colors
@@ -25,6 +25,13 @@ error() {
 	echo -e "${RED}✗${NC} $1"
 	exit 1
 }
+
+cleanup() {
+	warn "Installation failed. Cleaning up..."
+	[[ -n "$INSTALL_DIR" ]] && rm -rf "$INSTALL_DIR" 2>/dev/null || true
+}
+
+trap cleanup ERR
 
 detect_shell() {
 	local shell_name=""
@@ -75,41 +82,58 @@ check_dependencies() {
 	fi
 }
 
+download_file() {
+	local url="$1"
+	local dest="$2"
+
+	info "Downloading $url..."
+	if ! $FETCH_CMD "$url" >"$dest" 2>/dev/null; then
+		error "Failed to download $url"
+	fi
+
+	if [[ ! -s "$dest" ]]; then
+		error "Downloaded file is empty: $dest"
+	fi
+
+	success "Downloaded: $(basename "$dest")"
+}
+
 install_zsh() {
 	info "Installing for zsh..."
 
 	mkdir -p "$INSTALL_DIR/zsh"
 
-	# Download zsh version
-	$FETCH_CMD "$REPO_URL/raw/main/src/chainhist.zsh" >"$INSTALL_DIR/zsh/chainhist.zsh"
+	# Download zsh version and preview script
+	download_file "$REPO_URL/raw/main/src/ampcmd.zsh" "$INSTALL_DIR/zsh/ampcmd.zsh"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/zsh/ampcmd-preview.sh"
+	chmod +x "$INSTALL_DIR/zsh/ampcmd-preview.sh"
 
 	# Create plugin file
-	mkdir -p "$INSTALL_DIR/zsh"
-	cat >"$INSTALL_DIR/zsh/chainhist.plugin.zsh" <<'PLUGIN'
-# chainhist - Chain multiple history commands
-local _chainhist_dir="${0:A:h}"
-source "$_chainhist_dir/chainhist.zsh"
+	cat >"$INSTALL_DIR/zsh/ampcmd.plugin.zsh" <<'PLUGIN'
+# ampcmd - Chain multiple history commands
+local _ampcmd_dir="${0:A:h}"
+source "$_ampcmd_dir/ampcmd.zsh"
 
-_chainhist_widget() {
+_ampcmd_widget() {
     local selected
-    selected=$(chainhist 20)
+    selected=$(ampcmd 20)
     if [[ -n "$selected" ]]; then
         LBUFFER="$selected"
         zle reset-prompt
     fi
 }
 
-zle -N _chainhist_widget
-bindkey '^H' _chainhist_widget
+zle -N _ampcmd_widget
+bindkey '^H' _ampcmd_widget
 PLUGIN
 
 	# Add to zshrc if not already present
 	local zshrc="${ZDOTDIR:-$HOME}/.zshrc"
-	local source_line="[ -f $INSTALL_DIR/zsh/chainhist.plugin.zsh ] && source $INSTALL_DIR/zsh/chainhist.plugin.zsh"
+	local source_line="[ -f $INSTALL_DIR/zsh/ampcmd.plugin.zsh ] && source $INSTALL_DIR/zsh/ampcmd.plugin.zsh"
 
-	if ! grep -q "chainhist.plugin.zsh" "$zshrc" 2>/dev/null; then
+	if ! grep -q "ampcmd.plugin.zsh" "$zshrc" 2>/dev/null; then
 		echo "" >>"$zshrc"
-		echo "# chainhist - history chaining" >>"$zshrc"
+		echo "# ampcmd - history chaining" >>"$zshrc"
 		echo "$source_line" >>"$zshrc"
 		success "Added to $zshrc"
 	else
@@ -125,22 +149,25 @@ install_fish() {
 	mkdir -p "$INSTALL_DIR/fish"
 	mkdir -p "$HOME/.config/fish/functions"
 
-	# Download fish version
-	$FETCH_CMD "$REPO_URL/raw/main/src/chainhist.fish" >"$INSTALL_DIR/fish/chainhist.fish"
+	# Download fish version and preview script
+	download_file "$REPO_URL/raw/main/src/ampcmd.fish" "$INSTALL_DIR/fish/ampcmd.fish"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/fish/ampcmd-preview.sh"
+	chmod +x "$INSTALL_DIR/fish/ampcmd-preview.sh"
 
 	# Copy to fish functions directory
-	cp "$INSTALL_DIR/fish/chainhist.fish" "$HOME/.config/fish/functions/chainhist.fish"
+	cp "$INSTALL_DIR/fish/ampcmd.fish" "$HOME/.config/fish/functions/ampcmd.fish"
+	cp "$INSTALL_DIR/fish/ampcmd-preview.sh" "$HOME/.config/fish/functions/ampcmd-preview.sh"
 
 	# Add key binding
 	local fish_conf="$HOME/.config/fish/config.fish"
 	mkdir -p "$(dirname "$fish_conf")"
 
-	if ! grep -q "chainhist" "$fish_conf" 2>/dev/null; then
+	if ! grep -q "ampcmd" "$fish_conf" 2>/dev/null; then
 		cat >>"$fish_conf" <<'FISHBIND'
 
-# chainhist - CTRL-H keybinding
+# ampcmd - CTRL-H keybinding
 function fish_user_key_bindings
-    bind \ch 'chainhist | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
+    bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
 end
 FISHBIND
 		success "Added CTRL-H binding to $fish_conf"
@@ -156,18 +183,18 @@ install_bash() {
 
 	mkdir -p "$INSTALL_DIR/bash"
 
-	# Download bash version
-	$FETCH_CMD "$REPO_URL/raw/main/src/chainhist.bash" >"$INSTALL_DIR/bash/chainhist.bash"
-	$FETCH_CMD "$REPO_URL/raw/main/src/chainhist-preview.sh" >"$INSTALL_DIR/bash/chainhist-preview.sh"
-	chmod +x "$INSTALL_DIR/bash/chainhist-preview.sh"
+	# Download bash version and preview script
+	download_file "$REPO_URL/raw/main/src/ampcmd.bash" "$INSTALL_DIR/bash/ampcmd.bash"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/bash/ampcmd-preview.sh"
+	chmod +x "$INSTALL_DIR/bash/ampcmd-preview.sh"
 
 	# Add to bashrc
 	local bashrc="$HOME/.bashrc"
-	local source_line="[ -f $INSTALL_DIR/bash/chainhist.bash ] && source $INSTALL_DIR/bash/chainhist.bash"
+	local source_line="[ -f $INSTALL_DIR/bash/ampcmd.bash ] && source $INSTALL_DIR/bash/ampcmd.bash"
 
-	if ! grep -q "chainhist.bash" "$bashrc" 2>/dev/null; then
+	if ! grep -q "ampcmd.bash" "$bashrc" 2>/dev/null; then
 		echo "" >>"$bashrc"
-		echo "# chainhist - history chaining" >>"$bashrc"
+		echo "# ampcmd - history chaining" >>"$bashrc"
 		echo "$source_line" >>"$bashrc"
 		success "Added to $bashrc"
 	else
@@ -188,7 +215,7 @@ install_all() {
 main() {
 	echo ""
 	echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-	echo -e "${CYAN}║        chainhist installer             ║${NC}"
+	echo -e "${CYAN}║        ampcmd installer             ║${NC}"
 	echo -e "${CYAN}║    Chain history commands with &&      ║${NC}"
 	echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
 	echo ""
@@ -224,14 +251,8 @@ main() {
 	echo ""
 	echo -e "${YELLOW}Next steps:${NC}"
 	echo "  1. Reload your shell: exec \$SHELL"
-	echo "  2. Press CTRL-H to open chainhist"
+	echo "  2. Press CTRL-H to open ampcmd"
 	echo "  3. TAB/SPACE to select multiple commands"
-	echo "  4. ENTER to chain them together"
-	echo ""
-}
-
-main "$@"
-ACE to select multiple commands"
 	echo "  4. ENTER to chain them together"
 	echo ""
 }

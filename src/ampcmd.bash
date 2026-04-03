@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# chainhist - Chain multiple history commands with &&
-# Usage: chainhist [N] - show last N commands (default 20)
-#        chainhist -l  - list chain history
+# ampcmd - Chain multiple history commands with &&
+# Usage: ampcmd [N] - show last N commands (default 20)
+#        ampcmd -l  - list chain history
 #
 # WORKFLOW:
 #   1. fzf opens showing recent commands
@@ -12,11 +12,11 @@
 #   4. Commands chain in LIST ORDER (top = first)
 
 # Config and history paths
-_CHAINHIST_CONFIG="${HOME}/.config/chainhist/config"
-_CHAINHIST_HISTORY="${HOME}/.chainhist_history"
-[[ -f "${HOME}/.chainhist.conf" ]] && _CHAINHIST_CONFIG="${HOME}/.chainhist.conf"
+_CHAINHIST_CONFIG="${HOME}/.config/ampcmd/config"
+_CHAINHIST_HISTORY="${HOME}/.ampcmd_history"
+[[ -f "${HOME}/.ampcmd.conf" ]] && _CHAINHIST_CONFIG="${HOME}/.ampcmd.conf"
 
-_chainhist_read_config() {
+_ampcmd_read_config() {
 	local disallow_history="false"
 	if [[ -f "$_CHAINHIST_CONFIG" ]]; then
 		grep -q "^DISALLOW_HISTORY=true" "$_CHAINHIST_CONFIG" && disallow_history="true"
@@ -24,37 +24,37 @@ _chainhist_read_config() {
 	echo "$disallow_history"
 }
 
-_chainhist_record_history() {
+_ampcmd_record_history() {
 	local chain="$1"
-	local disallow="$(_chainhist_read_config)"
+	local disallow="$(_ampcmd_read_config)"
 	if [[ "$disallow" != "true" ]]; then
 		local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 		echo "${timestamp} │ ${chain}" >>"$_CHAINHIST_HISTORY"
 	fi
 }
 
-chainhist() {
+ampcmd() {
 	if ! command -v fzf &>/dev/null; then
-		echo "Error: fzf is not installed. Please install it to use chainhist." >&2
+		echo "Error: fzf is not installed. Please install it to use ampcmd." >&2
 		return 1
 	fi
 
 	# Handle -l/--list flag
 	if [[ "$1" == "-l" ]] || [[ "$1" == "--list" ]]; then
 		if [[ ! -f "$_CHAINHIST_HISTORY" ]]; then
-			echo "No chain history found. Run chainhist to create some chains first." >&2
+			echo "No chain history found. Run ampcmd to create some chains first." >&2
 			return 1
 		fi
 
 		local script_dir
 		script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-		local preview_cmd="env LC_ALL=C LC_CTYPE=C \"$script_dir/chainhist-preview.sh\" {+}"
+		local preview_cmd="env LC_ALL=C LC_CTYPE=C \"$script_dir/ampcmd-preview.sh\" {+}"
 
 		local history_selection
 		history_selection=$(tac "$_CHAINHIST_HISTORY" |
 			fzf \
 				--height=70% \
-				--header=$'\033[1;36m━━ chainhist history ━━\033[0m\n\033[1;33mSelect a chain to run\033[0m' \
+				--header=$'\033[1;36m━━ ampcmd history ━━\033[0m\n\033[1;33mSelect a chain to run\033[0m' \
 				--expect=ctrl-y \
 				--bind 'ctrl-y:accept' \
 				--bind 'start:first' \
@@ -100,7 +100,7 @@ chainhist() {
 	# Determine script directory
 	local script_dir
 	script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-	local preview_cmd="env LC_ALL=C LC_CTYPE=C \"$script_dir/chainhist-preview.sh\" {+}"
+	local preview_cmd="env LC_ALL=C LC_CTYPE=C \"$script_dir/ampcmd-preview.sh\" {+}"
 
 	local fzf_output
 	fzf_output=$(history |
@@ -112,7 +112,7 @@ chainhist() {
 			--multi \
 			--tac \
 			--height=70% \
-			--header=$'\033[1;36m━━ chainhist ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  ESC cancel\033[0m' \
+			--header=$'\033[1;36m━━ ampcmd ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  ESC cancel\033[0m' \
 			--expect=ctrl-y \
 			--bind 'tab:toggle+down' \
 			--bind 'space:toggle' \
@@ -164,19 +164,19 @@ chainhist() {
 				return 1
 			fi
 			echo "Copied to clipboard: $chain"
-			_chainhist_record_history "$chain"
+			_ampcmd_record_history "$chain"
 		else
 			eval "$chain"
-			_chainhist_record_history "$chain"
+			_ampcmd_record_history "$chain"
 		fi
 	fi
 }
 
 # Bind to CTRL-H if running interactively
 if [[ -n "$BASH_VERSION" ]] && [[ -o interactive ]]; then
-	_chainhist_widget() {
+	_ampcmd_widget() {
 		local output
-		output=$(chainhist 20 1)
+		output=$(ampcmd 20 1)
 
 		if [[ -z "$output" ]]; then
 			return 1
@@ -214,5 +214,5 @@ if [[ -n "$BASH_VERSION" ]] && [[ -o interactive ]]; then
 			;;
 		esac
 	}
-	bind -x '"\C-h": _chainhist_widget'
+	bind -x '"\C-h": _ampcmd_widget'
 fi

@@ -1,6 +1,6 @@
-# chainhist
+# ampcmd
 
-Chain multiple shell history commands into a single command using fuzzy selection.
+Chain shell history commands into a single command using fuzzy selection.
 
 **Select multiple commands from history → Chain with `&&` → Paste to prompt**
 
@@ -9,7 +9,7 @@ Works across **zsh**, **fish**, and **bash**.
 ## Requirements
 
 > [!CAUTION]
-> **fzf** is a mandatory dependency for the interactive UI. `chainhist` will not work without it.
+> **fzf** is a mandatory dependency for the interactive UI. `ampcmd` will not work without it.
 
 - `fzf` (fuzzy finder) - [Install guide](https://github.com/junegunn/fzf#installation)
 - zsh 5.8+ / fish 3.0+ / bash 4.0+
@@ -34,26 +34,26 @@ Result: git fetch origin && git reset --hard origin/main && docker compose down
 ### Homebrew (macOS)
 
 ```bash
-brew tap soundslikeinfo/chainhist
-brew install chainhist
+brew tap soundslikeinfo/ampcmd
+brew install ampcmd
 ```
 
 Add to your shell config:
 ```bash
 # zsh (~/.zshrc)
-source $(brew --prefix)/opt/chainhist/zsh/chainhist.plugin.zsh
+source $(brew --prefix)/opt/ampcmd/zsh/ampcmd.plugin.zsh
 
 # bash (~/.bashrc)
-source $(brew --prefix)/opt/chainhist/bash/chainhist.bash
+source $(brew --prefix)/opt/ampcmd/bash/ampcmd.bash
 
 # fish (~/.config/fish/config.fish)
-bind \ch 'chainhist | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
+bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
 ```
 
 ### curl (One-liner)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/soundslikeinfo/chainhist/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/soundslikeinfo/ampcmd/main/install.sh | bash
 ```
 
 Auto-detects your shell and installs appropriate version.
@@ -66,28 +66,28 @@ Auto-detects your shell and installs appropriate version.
 #### zsh
 
 ```bash
-git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
-echo 'source ~/.local/share/chainhist/src/chainhist.plugin.zsh' >> ~/.zshrc
+git clone https://github.com/soundslikeinfo/ampcmd.git ~/.local/share/ampcmd
+echo 'source ~/.local/share/ampcmd/src/ampcmd.plugin.zsh' >> ~/.zshrc
 exec $SHELL
 ```
 
 #### fish
 
 ```bash
-git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
+git clone https://github.com/soundslikeinfo/ampcmd.git ~/.local/share/ampcmd
 mkdir -p ~/.config/fish/functions
-cp ~/.local/share/chainhist/src/chainhist.fish ~/.config/fish/functions/
+cp ~/.local/share/ampcmd/src/ampcmd.fish ~/.config/fish/functions/
 
 # Add keybinding
-echo 'bind \ch "chainhist | begin; read -l key; read -l cmd; and begin; switch \$key; case ctrl-y; echo -n \$cmd | pbcopy; or echo -n \$cmd | xclip -selection clipboard; or echo -n \$cmd | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \$cmd; commandline -f execute; end; end; end"' >> ~/.config/fish/config.fish
+echo 'bind \ch "ampcmd | begin; read -l key; read -l cmd; and begin; switch \$key; case ctrl-y; echo -n \$cmd | pbcopy; or echo -n \$cmd | xclip -selection clipboard; or echo -n \$cmd | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \$cmd; commandline -f execute; end; end; end"' >> ~/.config/fish/config.fish
 exec $SHELL
 ```
 
 #### bash
 
 ```bash
-git clone https://github.com/soundslikeinfo/chainhist.git ~/.local/share/chainhist
-echo 'source ~/.local/share/chainhist/src/chainhist.bash' >> ~/.bashrc
+git clone https://github.com/soundslikeinfo/ampcmd.git ~/.local/share/ampcmd
+echo 'source ~/.local/share/ampcmd/src/ampcmd.bash' >> ~/.bashrc
 exec $SHELL
 ```
 
@@ -95,22 +95,22 @@ exec $SHELL
 
 ```bash
 # Clone to your Code directory
-git clone https://github.com/soundslikeinfo/chainhist.git ~/Code/chainhist
+git clone https://github.com/soundslikeinfo/ampcmd.git ~/Code/ampcmd
 
 # Add to PATH
-export PATH="$HOME/Code/chainhist/bin:$PATH"
+export PATH="$HOME/Code/ampcmd/bin:$PATH"
 
 # Source for your shell
-source ~/Code/chainhist/src/chainhist.plugin.zsh  # zsh
-source ~/Code/chainhist/src/chainhist.bash         # bash
+source ~/Code/ampcmd/src/ampcmd.plugin.zsh  # zsh
+source ~/Code/ampcmd/src/ampcmd.bash         # bash
 
 # fish: symlink the function and preview script
 mkdir -p ~/.config/fish/functions
-ln -sf ~/Code/chainhist/src/chainhist.fish ~/.config/fish/functions/chainhist.fish
-ln -sf ~/Code/chainhist/src/chainhist-preview.sh ~/.config/fish/functions/chainhist-preview.sh
+ln -sf ~/Code/ampcmd/src/ampcmd.fish ~/.config/fish/functions/ampcmd.fish
+ln -sf ~/Code/ampcmd/src/ampcmd-preview.sh ~/.config/fish/functions/ampcmd-preview.sh
 
 # fish: add keybinding to config.fish
-echo "bind \ch 'chainhist | begin; read -l key; read -l cmd; and begin; switch \"\$key\"; case ctrl-y; echo -n \"\$cmd\" | pbcopy; or echo -n \"\$cmd\" | xclip -selection clipboard; or echo -n \"\$cmd\" | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \"\$cmd\"; commandline -f execute; end; end; end'" >> ~/.config/fish/config.fish
+echo "bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch \"\$key\"; case ctrl-y; echo -n \"\$cmd\" | pbcopy; or echo -n \"\$cmd\" | xclip -selection clipboard; or echo -n \"\$cmd\" | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \"\$cmd\"; commandline -f execute; end; end; end'" >> ~/.config/fish/config.fish
 ```
 
 ## Usage
@@ -136,38 +136,38 @@ echo "bind \ch 'chainhist | begin; read -l key; read -l cmd; and begin; switch \
 
 ```bash
 # Show last 20 commands (default)
-chainhist
+ampcmd
 
 # Show last 50 commands
-chainhist 50
+ampcmd 50
 
 # View and select from chain history
-chainhist -l
+ampcmd -l
 ```
 
 ## History Tracking
 
-chainhist automatically records all executed chains to `~/.chainhist_history`.
+ampcmd automatically records all executed chains to `~/.ampcmd_history`.
 
 ### Viewing Chain History
 
 ```bash
 # View and rerun previous chains
-chainhist -l
+ampcmd -l
 ```
 
 This opens an fzf interface showing your chain history (most recent first). Select any chain to execute it again, or press CTRL-Y to copy it to the clipboard.
 
 ### Disabling History Recording
 
-Create a config file at `~/.config/chainhist/config` (or `~/.chainhist.conf`):
+Create a config file at `~/.config/ampcmd/config` (or `~/.ampcmd.conf`):
 
 ```bash
-# ~/.config/chainhist/config
+# ~/.config/ampcmd/config
 DISALLOW_HISTORY=true
 ```
 
-This prevents chainhist from recording your chains.
+This prevents ampcmd from recording your chains.
 
 ## Keybindings
 
@@ -223,7 +223,7 @@ User presses action key:
 
 | Tool | Multi-select | Order Control | Shell Support |
 |------|--------------|---------------|---------------|
-| chainhist | ✅ | ✅ List order | zsh/fish/bash |
+| ampcmd | ✅ | ✅ List order | zsh/fish/bash |
 | fzf Ctrl-R | ✅ | ❌ List order | zsh/fish/bash |
 | McFly | ❌ | N/A | zsh/bash |
 | Atuin | ❌ | N/A | zsh/fish/bash |
@@ -231,17 +231,17 @@ User presses action key:
 ## Contributing
 
 ```bash
-git clone https://github.com/soundslikeinfo/chainhist.git
-cd chainhist
+git clone https://github.com/soundslikeinfo/ampcmd.git
+cd ampcmd
 
 # Test zsh version
-zsh src/chainhist.zsh
+zsh src/ampcmd.zsh
 
 # Test fish version  
-fish src/chainhist.fish
+fish src/ampcmd.fish
 
 # Test bash version
-bash src/chainhist.bash
+bash src/ampcmd.bash
 ```
 
 ## Troubleshooting

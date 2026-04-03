@@ -1,7 +1,7 @@
 #!/usr/bin/env fish
-# chainhist - Chain multiple history commands with &&
-# Usage: chainhist [N] - show last N commands (default 20)
-#        chainhist -l  - list chain history
+# ampcmd - Chain multiple history commands with &&
+# Usage: ampcmd [N] - show last N commands (default 20)
+#        ampcmd -l  - list chain history
 #
 # WORKFLOW:
 #   1. fzf opens showing recent commands
@@ -12,16 +12,16 @@
 #   4. Commands chain in LIST ORDER (top = first)
 
 # Config and history paths
-set -l config_file "$HOME/.config/chainhist/config"
-set -l history_file "$HOME/.chainhist_history"
-if test -f "$HOME/.chainhist.conf"
-    set config_file "$HOME/.chainhist.conf"
+set -l config_file "$HOME/.config/ampcmd/config"
+set -l history_file "$HOME/.ampcmd_history"
+if test -f "$HOME/.ampcmd.conf"
+    set config_file "$HOME/.ampcmd.conf"
 end
 
-function _chainhist_read_config
-    set -l config_file "$HOME/.config/chainhist/config"
-    if test -f "$HOME/.chainhist.conf"
-        set config_file "$HOME/.chainhist.conf"
+function _ampcmd_read_config
+    set -l config_file "$HOME/.config/ampcmd/config"
+    if test -f "$HOME/.ampcmd.conf"
+        set config_file "$HOME/.ampcmd.conf"
     end
     
     set -l disallow_history "false"
@@ -33,35 +33,35 @@ function _chainhist_read_config
     echo "$disallow_history"
 end
 
-function _chainhist_record_history --argument chain
-    set -l disallow (_chainhist_read_config)
+function _ampcmd_record_history --argument chain
+    set -l disallow (_ampcmd_read_config)
     if test "$disallow" != "true"
         set -l timestamp (date +"%Y-%m-%d %H:%M:%S")
-        echo "$timestamp │ $chain" >> "$HOME/.chainhist_history"
+        echo "$timestamp │ $chain" >> "$HOME/.ampcmd_history"
     end
 end
 
-function chainhist --argument num_lines
+function ampcmd --argument num_lines
     if not type -q fzf
-        echo "Error: fzf is not installed. Please install it to use chainhist." >&2
+        echo "Error: fzf is not installed. Please install it to use ampcmd." >&2
         return 1
     end
 
     # Handle -l/--list flag
     if test "$num_lines" = "-l"; or test "$num_lines" = "--list"
-        if not test -f "$HOME/.chainhist_history"
-            echo "No chain history found. Run chainhist to create some chains first." >&2
+        if not test -f "$HOME/.ampcmd_history"
+            echo "No chain history found. Run ampcmd to create some chains first." >&2
             return 1
         end
 
         set -l script_dir (dirname (status filename))
-        set -l preview_cmd "env LC_ALL=C LC_CTYPE=C $script_dir/chainhist-preview.sh {+}"
+        set -l preview_cmd "env LC_ALL=C LC_CTYPE=C $script_dir/ampcmd-preview.sh {+}"
 
-        set -l history_tmp (mktemp /tmp/chainhist.XXXXXX)
-        tac "$HOME/.chainhist_history" | \
+        set -l history_tmp (mktemp /tmp/ampcmd.XXXXXX)
+        tac "$HOME/.ampcmd_history" | \
             fzf \
                 --height=70% \
-                --header='━━ chainhist history ━━
+                --header='━━ ampcmd history ━━
 Select a chain to run' \
             fzf \
                 --height=70% \
@@ -120,7 +120,7 @@ Select a chain to run' \
 
     # Determine preview script location
     set -l script_dir (dirname (status filename))
-    set -l preview_cmd "env LC_ALL=C LC_CTYPE=C $script_dir/chainhist-preview.sh {+}"
+    set -l preview_cmd "env LC_ALL=C LC_CTYPE=C $script_dir/ampcmd-preview.sh {+}"
 
     set -l history_items (history search | awk '!seen[$0]++' | head -n $num_lines)
 
@@ -129,13 +129,13 @@ Select a chain to run' \
         return 1
     end
 
-    set -l fzf_tmp (mktemp /tmp/chainhist.XXXXXX)
+    set -l fzf_tmp (mktemp /tmp/ampcmd.XXXXXX)
     printf "%s\n" $history_items | \
         nl -w3 -s' │ ' | \
         fzf \
             --multi \
             --height=70% \
-            --header='━━ chainhist ━━
+            --header='━━ ampcmd ━━
 TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  ESC cancel' \
             --bind 'tab:toggle+down' \
             --bind 'space:toggle' \
@@ -186,7 +186,7 @@ TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  ESC cancel' \
             return 1
         end
         echo "Copied to clipboard: $chain"
-        _chainhist_record_history "$chain"
+        _ampcmd_record_history "$chain"
     else
         # If we are in a tty and not being captured, execute directly
         if status is-interactive
@@ -195,16 +195,16 @@ TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  ESC cancel' \
         else
             echo "$chain"
         end
-        _chainhist_record_history "$chain"
+        _ampcmd_record_history "$chain"
     end
 end
 
 # Keybinding helper for Fish
-function __chainhist_widget
-    chainhist 20
+function __ampcmd_widget
+    ampcmd 20
 end
 
 # Bind to CTRL-H if in interactive mode
 if status is-interactive
-    bind \ch __chainhist_widget
+    bind \ch __ampcmd_widget
 end

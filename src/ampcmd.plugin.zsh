@@ -1,20 +1,20 @@
 #!/usr/bin/env zsh
-# chainhist.plugin.zsh - Load this file in your .zshrc for zsh integration
+# ampcmd.plugin.zsh - Load this file in your .zshrc for zsh integration
 #
 # Installation:
 #   Add to ~/.zshrc:
-#     source /path/to/chainhist.plugin.zsh
+#     source /path/to/ampcmd.plugin.zsh
 #
 # Or use a plugin manager (antidote, zinit, etc.):
-#   antidote bundle YOUR/chainhist
+#   antidote bundle YOUR/ampcmd
 
-local _chainhist_plugin_dir="${0:A:h}"
+local _ampcmd_plugin_dir="${0:A:h}"
 
-source "$_chainhist_plugin_dir/chainhist.zsh"
+source "$_ampcmd_plugin_dir/ampcmd.zsh"
 
-_chainhist_widget() {
+_ampcmd_widget() {
     local output
-    output=$(chainhist 20 1)
+    output=$(ampcmd 20 1)
 
     if [[ -z "$output" ]]; then
         return 1
@@ -41,5 +41,5 @@ _chainhist_widget() {
     esac
 }
 
-zle -N _chainhist_widget
-bindkey '^H' _chainhist_widget
+zle -N _ampcmd_widget
+bindkey '^H' _ampcmd_widget
