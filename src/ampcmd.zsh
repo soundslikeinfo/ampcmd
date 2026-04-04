@@ -168,3 +168,10 @@ ampcmd() {
         fi
     fi
 }
+
+# If run directly (not sourced), execute the function
+# This allows: zsh ~/.local/share/ampcmd/libexec/ampcmd.zsh 20
+# Check if being sourced by plugin vs run directly
+if [[ "${0:t}" == "ampcmd.zsh" ]] && [[ -z "${_ampcmd_plugin_dir}" ]]; then
+    ampcmd "$@"
+fi

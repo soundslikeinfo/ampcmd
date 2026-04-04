@@ -30,14 +30,14 @@ _ampcmd_record_history() {
 	if [[ "$disallow" != "true" ]]; then
 		local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 		echo "${timestamp} │ ${chain}" >>"$_CHAINHIST_HISTORY"
-	fi
-}
+fi
+	}
+fi
 
-ampcmd() {
-	if ! command -v fzf &>/dev/null; then
-		echo "Error: fzf is not installed. Please install it to use ampcmd." >&2
-		return 1
-	fi
+# If run directly (not sourced), execute the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	ampcmd "$@"
+fi
 
 	# Handle -l/--list flag
 	if [[ "$1" == "-l" ]] || [[ "$1" == "--list" ]]; then
@@ -215,4 +215,10 @@ if [[ -n "$BASH_VERSION" ]] && [[ -o interactive ]]; then
 		esac
 	}
 	bind -x '"\C-h": _ampcmd_widget'
+fi
+
+# If run directly (not sourced), execute the function
+# This allows: bash ~/.local/share/ampcmd/libexec/ampcmd.bash 20
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+	ampcmd "$@"
 fi

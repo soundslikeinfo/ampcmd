@@ -10,6 +10,7 @@ set -e
 REPO_URL="https://github.com/soundslikeinfo/ampcmd"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/ampcmd}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
+LIBEXEC_DIR="$INSTALL_DIR/libexec"
 
 # Colors
 RED='\033[0;31m'
@@ -101,35 +102,22 @@ download_file() {
 install_zsh() {
 	info "Installing for zsh..."
 
-	mkdir -p "$INSTALL_DIR/zsh"
+	mkdir -p "$LIBEXEC_DIR"
+	mkdir -p "$BIN_DIR"
 
-	# Download zsh version and preview script
-	download_file "$REPO_URL/raw/main/src/ampcmd.zsh" "$INSTALL_DIR/zsh/ampcmd.zsh"
-	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/zsh/ampcmd-preview.sh"
-	chmod +x "$INSTALL_DIR/zsh/ampcmd-preview.sh"
+	# Download zsh scripts to libexec
+	download_file "$REPO_URL/raw/main/src/ampcmd.zsh" "$LIBEXEC_DIR/ampcmd.zsh"
+	download_file "$REPO_URL/raw/main/src/ampcmd.plugin.zsh" "$LIBEXEC_DIR/ampcmd.plugin.zsh"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$LIBEXEC_DIR/ampcmd-preview.sh"
+	chmod +x "$LIBEXEC_DIR/ampcmd-preview.sh"
 
-	# Create plugin file
-	cat >"$INSTALL_DIR/zsh/ampcmd.plugin.zsh" <<'PLUGIN'
-# ampcmd - Chain multiple history commands
-local _ampcmd_dir="${0:A:h}"
-source "$_ampcmd_dir/ampcmd.zsh"
-
-_ampcmd_widget() {
-    local selected
-    selected=$(ampcmd 20)
-    if [[ -n "$selected" ]]; then
-        LBUFFER="$selected"
-        zle reset-prompt
-    fi
-}
-
-zle -N _ampcmd_widget
-bindkey '^H' _ampcmd_widget
-PLUGIN
+	# Download wrapper to bin
+	download_file "$REPO_URL/raw/main/bin/ampcmd" "$BIN_DIR/ampcmd"
+	chmod +x "$BIN_DIR/ampcmd"
 
 	# Add to zshrc if not already present
 	local zshrc="${ZDOTDIR:-$HOME}/.zshrc"
-	local source_line="[ -f $INSTALL_DIR/zsh/ampcmd.plugin.zsh ] && source $INSTALL_DIR/zsh/ampcmd.plugin.zsh"
+	local source_line="[ -f $LIBEXEC_DIR/ampcmd.plugin.zsh ] && source $LIBEXEC_DIR/ampcmd.plugin.zsh"
 
 	if ! grep -q "ampcmd.plugin.zsh" "$zshrc" 2>/dev/null; then
 		echo "" >>"$zshrc"
@@ -140,39 +128,48 @@ PLUGIN
 		success "Already configured in $zshrc"
 	fi
 
+	# Check if BIN_DIR is in PATH
+	if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+		warn "$BIN_DIR is not in PATH"
+		info "Add to your shell config:"
+		echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+	fi
+
 	success "zsh installation complete"
 }
 
 install_fish() {
 	info "Installing for fish..."
 
-	mkdir -p "$INSTALL_DIR/fish"
-	mkdir -p "$HOME/.config/fish/functions"
+	mkdir -p "$LIBEXEC_DIR"
+	mkdir -p "$BIN_DIR"
 
-	# Download fish version and preview script
-	download_file "$REPO_URL/raw/main/src/ampcmd.fish" "$INSTALL_DIR/fish/ampcmd.fish"
-	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/fish/ampcmd-preview.sh"
-	chmod +x "$INSTALL_DIR/fish/ampcmd-preview.sh"
+	# Download fish scripts to libexec
+	download_file "$REPO_URL/raw/main/src/ampcmd.fish" "$LIBEXEC_DIR/ampcmd.fish"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$LIBEXEC_DIR/ampcmd-preview.sh"
+	chmod +x "$LIBEXEC_DIR/ampcmd-preview.sh"
 
-	# Copy to fish functions directory
-	cp "$INSTALL_DIR/fish/ampcmd.fish" "$HOME/.config/fish/functions/ampcmd.fish"
-	cp "$INSTALL_DIR/fish/ampcmd-preview.sh" "$HOME/.config/fish/functions/ampcmd-preview.sh"
+	# Download wrapper to bin
+	download_file "$REPO_URL/raw/main/bin/ampcmd" "$BIN_DIR/ampcmd"
+	chmod +x "$BIN_DIR/ampcmd"
 
-	# Add key binding
-	local fish_conf="$HOME/.config/fish/config.fish"
-	mkdir -p "$(dirname "$fish_conf")"
+	# Add to fish config
+	if ! grep -q "ampcmd.fish" "$fish_conf" 2>/dev/null; then
+		cat >>"$fish_conf" <<FISHBIND
 
-	if ! grep -q "ampcmd" "$fish_conf" 2>/dev/null; then
-		cat >>"$fish_conf" <<'FISHBIND'
-
-# ampcmd - CTRL-H keybinding
-function fish_user_key_bindings
-    bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch "$key"; case ctrl-y; echo -n "$cmd" | pbcopy; or echo -n "$cmd" | xclip -selection clipboard; or echo -n "$cmd" | xsel --clipboard; echo "Copied to clipboard"; case "*"; commandline -- "$cmd"; commandline -f execute; end; end; end'
-end
+# ampcmd - Chain history commands
+source $LIBEXEC_DIR/ampcmd.fish
 FISHBIND
-		success "Added CTRL-H binding to $fish_conf"
+		success "Added to $fish_conf"
 	else
 		success "Already configured in $fish_conf"
+	fi
+
+	# Check if BIN_DIR is in PATH
+	if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+		warn "$BIN_DIR is not in PATH"
+		info "Add to your fish config:"
+		echo "  set -gx PATH \$HOME/.local/bin \$PATH"
 	fi
 
 	success "fish installation complete"
@@ -181,16 +178,21 @@ FISHBIND
 install_bash() {
 	info "Installing for bash..."
 
-	mkdir -p "$INSTALL_DIR/bash"
+	mkdir -p "$LIBEXEC_DIR"
+	mkdir -p "$BIN_DIR"
 
-	# Download bash version and preview script
-	download_file "$REPO_URL/raw/main/src/ampcmd.bash" "$INSTALL_DIR/bash/ampcmd.bash"
-	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$INSTALL_DIR/bash/ampcmd-preview.sh"
-	chmod +x "$INSTALL_DIR/bash/ampcmd-preview.sh"
+	# Download bash scripts to libexec
+	download_file "$REPO_URL/raw/main/src/ampcmd.bash" "$LIBEXEC_DIR/ampcmd.bash"
+	download_file "$REPO_URL/raw/main/src/ampcmd-preview.sh" "$LIBEXEC_DIR/ampcmd-preview.sh"
+	chmod +x "$LIBEXEC_DIR/ampcmd-preview.sh"
+
+	# Download wrapper to bin
+	download_file "$REPO_URL/raw/main/bin/ampcmd" "$BIN_DIR/ampcmd"
+	chmod +x "$BIN_DIR/ampcmd"
 
 	# Add to bashrc
 	local bashrc="$HOME/.bashrc"
-	local source_line="[ -f $INSTALL_DIR/bash/ampcmd.bash ] && source $INSTALL_DIR/bash/ampcmd.bash"
+	local source_line="[ -f $LIBEXEC_DIR/ampcmd.bash ] && source $LIBEXEC_DIR/ampcmd.bash"
 
 	if ! grep -q "ampcmd.bash" "$bashrc" 2>/dev/null; then
 		echo "" >>"$bashrc"
@@ -199,6 +201,13 @@ install_bash() {
 		success "Added to $bashrc"
 	else
 		success "Already configured in $bashrc"
+	fi
+
+	# Check if BIN_DIR is in PATH
+	if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+		warn "$BIN_DIR is not in PATH"
+		info "Add to your shell config:"
+		echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
 	fi
 
 	success "bash installation complete"
@@ -250,10 +259,17 @@ main() {
 	success "Installation complete!"
 	echo ""
 	echo -e "${YELLOW}Next steps:${NC}"
-	echo "  1. Reload your shell: exec \$SHELL"
-	echo "  2. Press CTRL-H to open ampcmd"
-	echo "  3. TAB/SPACE to select multiple commands"
-	echo "  4. ENTER to chain them together"
+	echo "  1. Add to PATH (if not already):"
+	echo "     export PATH=\"\$HOME/.local/bin:\$PATH\""
+	echo ""
+	echo "  2. Reload your shell:"
+	echo "     exec \$SHELL"
+	echo ""
+	echo "  3. Use ampcmd:"
+	echo "     ampcmd        # Show last 20 commands"
+	echo "     ampcmd 50     # Show last 50 commands"
+	echo "     ampcmd -l     # Show chain history"
+	echo "     CTRL-H        # Fuzzy select and chain (after sourcing)"
 	echo ""
 }
 

@@ -1,1 +1,52 @@
-../src/ampcmd.zsh
+#!/bin/sh
+# ampcmd - Universal wrapper that detects shell and calls appropriate implementation
+# Usage: ampcmd [N] or ampcmd -l
+
+set -e
+
+# Determine script directory
+# Homebrew: /opt/homebrew/bin/ampcmd symlink -> ../Cellar/ampcmd/version/bin/ampcmd
+#            libexec is at ../Cellar/ampcmd/version/libexec
+# Manual:    ~/.local/bin/ampcmd executable
+#            libexec is at ../share/ampcmd/libexec
+WRAPPER_PATH="$0"
+WRAPPER_DIR="$(cd "$(dirname "$WRAPPER_PATH")" && pwd)"
+
+# Try Homebrew Cellar structure first (wrapper is symlink or in Cellar)
+if [ -f "$WRAPPER_DIR/../libexec/ampcmd.zsh" ]; then
+    SCRIPT_DIR="$(cd "$WRAPPER_DIR/../libexec" && pwd)"
+# Try manual install structure
+elif [ -f "$WRAPPER_DIR/../share/ampcmd/libexec/ampcmd.zsh" ]; then
+    SCRIPT_DIR="$(cd "$WRAPPER_DIR/../share/ampcmd/libexec" && pwd)"
+else
+    echo "ampcmd: Cannot find libexec directory" >&2
+    echo "Expected one of:" >&2
+    echo "  $WRAPPER_DIR/../libexec/ampcmd.zsh" >&2
+    echo "  $WRAPPER_DIR/../share/ampcmd/libexec/ampcmd.zsh" >&2
+    exit 1
+fi
+
+# Detect current shell
+DETECTED_SHELL="${SHELL##*/}"
+
+# Fallback to zsh if can't detect
+: "${DETECTED_SHELL:=zsh}"
+
+# Execute the appropriate shell version
+# Pass all arguments properly quoted
+case "$DETECTED_SHELL" in
+*zsh*)
+	exec zsh -c '. "$1/ampcmd.zsh" && ampcmd "${@:2}"' zsh "$SCRIPT_DIR" "$@"
+	;;
+*bash*)
+	exec bash -c 'source "$1/ampcmd.bash" && ampcmd "${@:2}"' bash "$SCRIPT_DIR" "$@"
+	;;
+*fish*)
+	exec fish -c "source '$SCRIPT_DIR/ampcmd.fish'; and ampcmd \$argv" -- "$@"
+	;;
+*)
+	echo "ampcmd: Unsupported shell: $DETECTED_SHELL" >&2
+	echo "Supported shells: zsh, bash, fish" >&2
+	exit 1
+	;;
+esac

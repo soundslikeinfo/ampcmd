@@ -208,3 +208,10 @@ end
 if status is-interactive
     bind \ch __ampcmd_widget
 end
+
+# If run directly (not sourced), execute the function
+# This allows: fish ~/.local/share/ampcmd/libexec/ampcmd.fish 20
+# status current-command returns the script path when run directly
+if string match -q '*ampcmd.fish' (status current-command)
+    ampcmd $argv
+end

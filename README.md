@@ -41,15 +41,17 @@ brew install ampcmd
 Add to your shell config:
 ```bash
 # zsh (~/.zshrc)
-source $(brew --prefix ampcmd)/ampcmd.plugin.zsh
+source $(brew --prefix ampcmd)/libexec/ampcmd.plugin.zsh
 
 # bash (~/.bashrc)
-source $(brew --prefix ampcmd)/ampcmd.bash
+source $(brew --prefix ampcmd)/libexec/ampcmd.bash
 
 # fish (~/.config/fish/config.fish)
-source $(brew --prefix ampcmd)/ampcmd.fish
+source $(brew --prefix ampcmd)/libexec/ampcmd.fish
 bind \ch 'ampcmd'
 ```
+
+**Note:** You can run `ampcmd` directly (command-line mode) without sourcing, but shell integration (CTRL-H keybinding) requires sourcing.
 
 ### curl (One-liner)
 
