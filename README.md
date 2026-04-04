@@ -11,21 +11,24 @@ Works across **zsh**, **fish**, and **bash**.
 > [!CAUTION]
 > **fzf** is a mandatory dependency for the interactive UI. `ampcmd` will not work without it.
 
-- `fzf` (fuzzy finder) - [Install guide](https://github.com/junegunn/fzf#installation)
+- `fzf` **0.38+** (fuzzy finder) - [Install guide](https://github.com/junegunn/fzf#installation)
 - zsh 5.8+ / fish 3.0+ / bash 4.0+
+
+> [!NOTE]
+> fzf 0.38+ is required for the CTRL-L mode toggle. Older versions support all other features.
 
 ## Demo
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ history > git fetch origin                        │
-│ history > git reset --hard origin/main            │
-│ history > docker compose down                     │
-│ history > docker compose build                    │
-│ history > docker compose up -d                    │
+│ history > git fetch origin                      │
+│ history > git reset --hard origin/main          │
+│ history > docker compose down                   │
+│ history > docker compose build                  │
+│ history > docker compose up -d                  │
 └─────────────────────────────────────────────────┘
          TAB to select multiple
-                    
+
 Result: git fetch origin && git reset --hard origin/main && docker compose down
 ```
 
@@ -142,14 +145,19 @@ rm ~/.config/fish/functions/ampcmd-preview.sh
 4. Press one of:
    - **ENTER** - Execute immediately
    - **CTRL-Y** - Copy to clipboard
+   - **CTRL-R** - Clear all selections (start queue over, cursor stays put)
+   - **CTRL-L** - Switch to chain history (press again to switch back)
 5. ESC to cancel
 
-### Action Modes
+### Action Keys
 
 | Key | Action | Description |
 |-----|--------|-------------|
 | `ENTER` | Execute immediately | Chain runs without confirmation |
 | `CTRL-Y` | Copy to clipboard | Chain copied to system clipboard |
+| `CTRL-R` | Clear selections | Deselects all — cursor stays in place |
+| `CTRL-L` | Toggle mode | Switch between shell history and chain history (press again to switch back) |
+| `ESC` | Cancel | Exit without executing |
 
 ### Command Line
 
@@ -176,6 +184,8 @@ ampcmd -l
 ```
 
 This opens an fzf interface showing your chain history (most recent first). Select any chain to execute it again, or press CTRL-Y to copy it to the clipboard.
+
+You can also switch to chain history without leaving the main picker — press **CTRL-L** while browsing shell history to toggle into chains mode, then press **CTRL-L** again to switch back.
 
 ### Disabling History Recording
 
@@ -216,8 +226,10 @@ SOURCE_BEFORE_EXEC=~/.zsh/05-aliases.zsh:~/.zsh/06-functions.zsh
 | `SHIFT+TAB` | Toggle selection + move up |
 | `RIGHT ARROW` | Select command + move down |
 | `LEFT ARROW` | Deselect command |
+| `CTRL-R` | Clear all selections (cursor stays put) |
+| `CTRL-L` | Toggle between shell history and chain history |
 | `ENTER` | Execute chain immediately |
-| `CTRL+Y` | Copy chain to clipboard |
+| `CTRL-Y` | Copy chain to clipboard |
 | `ESC` | Cancel |
 
 ## Order Preservation
@@ -236,6 +248,8 @@ Commands are chained in **list order** (top-to-bottom in fzf). For best results:
 | CTRL-H binding | ✅ | ✅ | ✅ |
 | Execute immediately (ENTER) | ✅ | ✅ | ⚠️ Pastes to prompt |
 | Copy to clipboard (CTRL-Y) | ✅ | ✅ | ✅ |
+| Clear selections (CTRL-R) | ✅ | ✅ | ✅ |
+| Toggle chain history (CTRL-L) | ✅ | ✅ | ✅ |
 | History source | `fc` builtin | `history` builtin | `history` builtin |
 | Widget system | zle | `bind` | `bind -x` |
 
@@ -246,15 +260,22 @@ Commands are chained in **list order** (top-to-bottom in fzf). For best results:
 ```
 User presses CTRL-H
     ↓
-fzf opens with recent history
+fzf opens with recent shell history  (prompt: history >)
     ↓
-User selects multiple commands
-    ↓
-Commands joined with &&
-    ↓
-User presses action key:
-    ├─ ENTER  → Execute immediately
-    └─ CTRL-Y → Copy to clipboard
+TAB / SPACE to select commands
+    │
+    ├─ CTRL-L → Switch to chain history  (prompt: chains >)
+    │               ↓
+    │           Select a previous chain
+    │               ↓
+    │           CTRL-L → Switch back to shell history
+    │
+    ├─ CTRL-R → Clear all selections (stay in picker)
+    │
+    └─ Selected commands joined with &&
+           ↓
+       ENTER  → Execute immediately
+       CTRL-Y → Copy to clipboard
 ```
 
 ## Comparison with Alternatives

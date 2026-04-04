@@ -34,9 +34,11 @@ _ampcmd_read_config() {
 
 _ampcmd_record_history() {
 	local chain="$1"
-	local disallow="$(_ampcmd_read_config)"
+	local disallow
+	disallow="$(_ampcmd_read_config)"
 	if [[ "$disallow" != "true" ]]; then
-		local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+		local timestamp
+		timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 		echo "${timestamp} │ ${chain}" >>"$_CHAINHIST_HISTORY"
 	fi
 }
@@ -109,29 +111,36 @@ ampcmd() {
 	# Explicitly read the history file so the history builtin has data to work with.
 	history -r "${HISTFILE:-$HOME/.bash_history}" 2>/dev/null
 
+	# Pre-generate both datasets so CTRL-L can reload without leaving fzf
+	local hist_tmp chains_tmp
+	hist_tmp=$(mktemp /tmp/ampcmd_hist.XXXXXX)
+	chains_tmp=$(mktemp /tmp/ampcmd_chains.XXXXXX)
+	history | tail -n "$num_lines" | awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' | awk '!seen[$0]++' | nl -w3 -s' │ ' > "$hist_tmp"
+	[[ -f "$_CHAINHIST_HISTORY" ]] && cat "$_CHAINHIST_HISTORY" | sed 's/^[0-9-]* [0-9:]* │ //' | nl -w3 -s' │ ' > "$chains_tmp"
+
 	local fzf_output
-	fzf_output=$(history |
-		tail -n "$num_lines" |
-		awk '{for(i=2;i<=NF;i++) printf "%s ", $i; print ""}' |
-		awk '!seen[$0]++' |
-		nl -w3 -s' │ ' |
+	fzf_output=$(cat "$hist_tmp" |
 		fzf \
 			--multi \
 			--tac \
 			--height=70% \
-			--header=$'\033[1;36m━━ ampcmd ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  ESC cancel\033[0m' \
+			--header=$'\033[1;36m━━ ampcmd ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  CTRL-R = Clear  │  CTRL-L = Chains  │  ESC cancel\033[0m' \
 			--expect=ctrl-y \
 			--bind 'tab:toggle+down' \
 			--bind 'space:toggle' \
 			--bind 'shift-tab:toggle+up' \
 			--bind 'right:select+down' \
 			--bind 'left:deselect' \
+			--bind 'ctrl-r:deselect-all' \
+			--bind "ctrl-l:transform:if [ \"\${FZF_PROMPT}\" = 'history > ' ]; then echo \"reload(cat ${chains_tmp})+change-prompt(chains > )+change-preview-label( Chain History )\"; else echo \"reload(cat ${hist_tmp})+change-prompt(history > )+change-preview-label( Command Queue )\"; fi" \
 			--bind 'ctrl-y:accept' \
-			--prompt="Select commands > " \
+			--prompt="history > " \
 			--preview "$preview_cmd" \
 			--preview-window 'right:40%:border-left:wrap' \
 			--preview-label=' Command Queue ' \
 			--no-info 2>/dev/null)
+
+	rm -f "$hist_tmp" "$chains_tmp"
 
 	if [[ -z "$fzf_output" ]]; then
 		return 1
@@ -174,7 +183,8 @@ ampcmd() {
 			_ampcmd_record_history "$chain"
 		else
 			if [[ "$(_ampcmd_config_get SHOW_FULL_AMPCMD true)" == "true" ]]; then
-				local divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
+				local divider_style
+				divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
 				local term_width divider_width width
 				term_width=$(tput cols 2>/dev/null) || term_width=${COLUMNS:-80}
 				divider_width="$(_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)"

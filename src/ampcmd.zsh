@@ -32,11 +32,13 @@ _ampcmd_config_get() {
 }
 
 _ampcmd_source_before_exec() {
-    local files="$(_ampcmd_config_get SOURCE_BEFORE_EXEC)"
+    local files
+    files="$(_ampcmd_config_get SOURCE_BEFORE_EXEC)"
     [[ -z "$files" ]] && return
     local f
     while IFS= read -r f; do
         f="${f/#\~/$HOME}"
+        # shellcheck source=/dev/null
         [[ -f "$f" ]] && source "$f" 2>/dev/null || true
     done < <(printf '%s' "$files" | tr ':' '\n')
 }
@@ -44,6 +46,7 @@ _ampcmd_source_before_exec() {
 _ampcmd_read_config() {
     local disallow_history="false"
     if [[ -f "$_CHAINHIST_CONFIG" ]]; then
+        # shellcheck source=/dev/null
         source "$_CHAINHIST_CONFIG" 2>/dev/null || true
         grep -q "^DISALLOW_HISTORY=true" "$_CHAINHIST_CONFIG" && disallow_history="true"
     fi
@@ -52,9 +55,11 @@ _ampcmd_read_config() {
 
 _ampcmd_record_history() {
     local chain="$1"
-    local disallow="$(_ampcmd_read_config)"
+    local disallow
+    disallow="$(_ampcmd_read_config)"
     if [[ "$disallow" != "true" ]]; then
-        local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+        local timestamp
+        timestamp=$(date +"%Y-%m-%d %H:%M:%S")
         echo "${timestamp} │ ${chain}" >> "$_CHAINHIST_HISTORY"
     fi
 }
@@ -101,11 +106,12 @@ ampcmd() {
             echo -n "$chain" | pbcopy 2>/dev/null || \
             echo -n "$chain" | xclip -selection clipboard 2>/dev/null || \
             echo -n "$chain" | xsel --clipboard 2>/dev/null || \
-            { echo "clipboard not available" && return 1 }
+            { echo "clipboard not available" && return 1; }
             echo "Copied to clipboard: $chain"
         else
             if [[ "$(_ampcmd_config_get SHOW_FULL_AMPCMD true)" == "true" ]]; then
-                local divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
+                local divider_style
+                divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
                 local term_width divider_width width
                 term_width=$(tput cols 2>/dev/null) || term_width=${COLUMNS:-80}
                 divider_width="$(_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)"
@@ -116,8 +122,10 @@ ampcmd() {
                 esac
                 echo "$chain"
                 if [[ "$divider_style" == "solid" ]]; then
+                    # shellcheck disable=SC2051,SC2086
                     printf '─%.0s' {1..$width}; echo
                 else
+                    # shellcheck disable=SC2051,SC2086
                     printf -- '-%.0s' {1..$width}; echo
                 fi
             fi
@@ -137,29 +145,36 @@ ampcmd() {
     # Explicitly read the history file so fc has data to work with.
     fc -R "${HISTFILE:-$HOME/.zsh_history}" 2>/dev/null
 
+    # Pre-generate both datasets so CTRL-L can reload without leaving fzf
+    local hist_tmp chains_tmp
+    hist_tmp=$(mktemp /tmp/ampcmd_hist.XXXXXX)
+    chains_tmp=$(mktemp /tmp/ampcmd_chains.XXXXXX)
+    fc -ln -"$num_lines" 2>/dev/null | awk '!seen[$0]++' | tail -n "$num_lines" | tac | nl -w3 -s' │ ' > "$hist_tmp"
+    [[ -f "$_CHAINHIST_HISTORY" ]] && tac "$_CHAINHIST_HISTORY" | sed 's/^[0-9-]* [0-9:]* │ //' | nl -w3 -s' │ ' > "$chains_tmp"
+
     local fzf_output
-    fzf_output=$(fc -ln -$num_lines 2>/dev/null | \
-        awk '!seen[$0]++' | \
-        tail -n "$num_lines" | \
-        tac | \
-        nl -w3 -s' │ ' | \
+    fzf_output=$(cat "$hist_tmp" | \
         fzf \
             --multi \
             --height=70% \
-            --header="$(echo -e '\033[1;36m━━ ampcmd ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  ESC cancel\033[0m')" \
+            --header="$(echo -e '\033[1;36m━━ ampcmd ━━\033[0m\n\033[1;33mTAB/SPACE toggle  │  ENTER = Run  │  CTRL-Y = Copy  │  CTRL-R = Clear  │  CTRL-L = Chains  │  ESC cancel\033[0m')" \
             --expect=ctrl-y \
             --bind 'tab:toggle+down' \
             --bind 'space:toggle' \
             --bind 'shift-tab:toggle+up' \
             --bind 'right:select+down' \
             --bind 'left:deselect' \
+            --bind 'ctrl-r:deselect-all' \
+            --bind "ctrl-l:transform:if [ \"\${FZF_PROMPT}\" = 'history > ' ]; then echo \"reload(cat ${chains_tmp})+change-prompt(chains > )+change-preview-label( Chain History )\"; else echo \"reload(cat ${hist_tmp})+change-prompt(history > )+change-preview-label( Command Queue )\"; fi" \
             --bind 'ctrl-y:accept' \
             --bind 'start:first' \
-            --prompt="Select commands > " \
+            --prompt="history > " \
             --preview "$preview_cmd" \
             --preview-window 'right:40%:border-left:wrap' \
             --preview-label=' Command Queue ' \
             --no-info 2>/dev/null)
+
+    rm -f "$hist_tmp" "$chains_tmp"
 
     if [[ -z "$fzf_output" ]]; then
         return 1
@@ -195,13 +210,14 @@ ampcmd() {
             echo -n "$chain" | pbcopy 2>/dev/null || \
             echo -n "$chain" | xclip -selection clipboard 2>/dev/null || \
             echo -n "$chain" | xsel --clipboard 2>/dev/null || \
-            { echo "clipboard not available" && return 1 }
+            { echo "clipboard not available" && return 1; }
             echo "Copied to clipboard: $chain"
             _ampcmd_record_history "$chain"
         else
             # Execute the chain
             if [[ "$(_ampcmd_config_get SHOW_FULL_AMPCMD true)" == "true" ]]; then
-                local divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
+                local divider_style
+                divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
                 local term_width divider_width width
                 term_width=$(tput cols 2>/dev/null) || term_width=${COLUMNS:-80}
                 divider_width="$(_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)"
@@ -212,8 +228,10 @@ ampcmd() {
                 esac
                 echo "$chain"
                 if [[ "$divider_style" == "solid" ]]; then
+                    # shellcheck disable=SC2051,SC2086
                     printf '─%.0s' {1..$width}; echo
                 else
+                    # shellcheck disable=SC2051,SC2086
                     printf -- '-%.0s' {1..$width}; echo
                 fi
             fi

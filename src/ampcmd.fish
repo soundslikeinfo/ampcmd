@@ -146,28 +146,39 @@ Select a chain to run' \
         return 1
     end
 
+    # Pre-generate both datasets so CTRL-L can reload without leaving fzf
+    set -l hist_input_tmp (mktemp /tmp/ampcmd_hist.XXXXXX)
+    set -l chains_input_tmp (mktemp /tmp/ampcmd_chains.XXXXXX)
+    printf "%s\n" $history_items | nl -w3 -s' │ ' > $hist_input_tmp
+    if test -f "$HOME/.ampcmd_history"
+        tac "$HOME/.ampcmd_history" | sed 's/^[0-9-]* [0-9:]* │ //' | nl -w3 -s' │ ' > $chains_input_tmp
+    end
+
+    set -l ctrl_l_bind "ctrl-l:transform:if [ \"\${FZF_PROMPT}\" = 'history > ' ]; then echo \"reload(cat $chains_input_tmp)+change-prompt(chains > )+change-preview-label( Chain History )\"; else echo \"reload(cat $hist_input_tmp)+change-prompt(history > )+change-preview-label( Command Queue )\"; fi"
+
     set -l fzf_tmp (mktemp /tmp/ampcmd.XXXXXX)
-    printf "%s\n" $history_items | \
-        nl -w3 -s' │ ' | \
+    cat $hist_input_tmp | \
         fzf \
             --multi \
             --height=70% \
             --header='━━ ampcmd ━━
-TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  ESC cancel' \
+TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  CTRL-R = Clear  |  CTRL-L = Chains  |  ESC cancel' \
             --bind 'tab:toggle+down' \
             --bind 'space:toggle' \
             --bind 'shift-tab:toggle+up' \
             --bind 'right:select+down' \
             --bind 'left:deselect' \
+            --bind 'ctrl-r:deselect-all' \
+            --bind $ctrl_l_bind \
             --bind 'ctrl-y:accept' \
-            --prompt="Select commands > " \
+            --prompt="history > " \
             --preview "$preview_cmd" \
             --preview-window 'right:40%:border-left:wrap' \
             --preview-label=' Command Queue ' \
             --no-info > $fzf_tmp
 
     set -l fzf_output (cat $fzf_tmp)
-    rm -f $fzf_tmp
+    rm -f $fzf_tmp $hist_input_tmp $chains_input_tmp
 
     if test -z "$fzf_output"
         return 1
