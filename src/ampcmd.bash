@@ -16,6 +16,14 @@ _CHAINHIST_CONFIG="${HOME}/.config/ampcmd/config"
 _CHAINHIST_HISTORY="${HOME}/.ampcmd_history"
 [[ -f "${HOME}/.ampcmd.conf" ]] && _CHAINHIST_CONFIG="${HOME}/.ampcmd.conf"
 
+_ampcmd_config_get() {
+	local key="$1" default="${2:-}"
+	[[ -f "$_CHAINHIST_CONFIG" ]] || { echo "$default"; return; }
+	local value
+	value=$(grep "^${key}=" "$_CHAINHIST_CONFIG" 2>/dev/null | tail -1 | cut -d'=' -f2-)
+	echo "${value:-$default}"
+}
+
 _ampcmd_read_config() {
 	local disallow_history="false"
 	if [[ -f "$_CHAINHIST_CONFIG" ]]; then
@@ -30,15 +38,10 @@ _ampcmd_record_history() {
 	if [[ "$disallow" != "true" ]]; then
 		local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 		echo "${timestamp} │ ${chain}" >>"$_CHAINHIST_HISTORY"
-fi
-	}
-fi
+	fi
+}
 
-# If run directly (not sourced), execute the function
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-	ampcmd "$@"
-fi
-
+ampcmd() {
 	# Handle -l/--list flag
 	if [[ "$1" == "-l" ]] || [[ "$1" == "--list" ]]; then
 		if [[ ! -f "$_CHAINHIST_HISTORY" ]]; then
@@ -101,6 +104,10 @@ fi
 	local script_dir
 	script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	local preview_cmd="env LC_ALL=C LC_CTYPE=C \"$script_dir/ampcmd-preview.sh\" {+}"
+
+	# In non-interactive shells (called via wrapper), history is not loaded.
+	# Explicitly read the history file so the history builtin has data to work with.
+	history -r "${HISTFILE:-$HOME/.bash_history}" 2>/dev/null
 
 	local fzf_output
 	fzf_output=$(history |
@@ -166,6 +173,23 @@ fi
 			echo "Copied to clipboard: $chain"
 			_ampcmd_record_history "$chain"
 		else
+			if [[ "$(_ampcmd_config_get SHOW_FULL_AMPCMD true)" == "true" ]]; then
+				local divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
+				local term_width divider_width width
+				term_width=$(tput cols 2>/dev/null) || term_width=${COLUMNS:-80}
+				divider_width="$(_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)"
+				case "$divider_width" in
+					half) width=$(( term_width / 2 )) ;;
+					full) width=$term_width ;;
+					*)    width=${divider_width:-$term_width} ;;
+				esac
+				echo "$chain"
+				if [[ "$divider_style" == "solid" ]]; then
+					printf '─%.0s' $(seq 1 "$width"); echo
+				else
+					printf -- '-%.0s' $(seq 1 "$width"); echo
+				fi
+			fi
 			eval "$chain"
 			_ampcmd_record_history "$chain"
 		fi

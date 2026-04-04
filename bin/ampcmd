@@ -44,10 +44,12 @@ DETECTED_SHELL="${SHELL##*/}"
 # Pass all arguments properly quoted
 case "$DETECTED_SHELL" in
 *zsh*)
-	exec zsh -c '. "$1/ampcmd.zsh" && ampcmd "${@:2}"' zsh "$SCRIPT_DIR" "$@"
+	exec env _ampcmd_plugin_dir="$SCRIPT_DIR" zsh -c \
+		'source "$_ampcmd_plugin_dir/ampcmd.zsh" && ampcmd "$@"' zsh "$@"
 	;;
 *bash*)
-	exec bash -c 'source "$1/ampcmd.bash" && ampcmd "${@:2}"' bash "$SCRIPT_DIR" "$@"
+	exec env _ampcmd_plugin_dir="$SCRIPT_DIR" bash -c \
+		'source "$_ampcmd_plugin_dir/ampcmd.bash" && ampcmd "$@"' bash "$@"
 	;;
 *fish*)
 	exec fish -c "source '$SCRIPT_DIR/ampcmd.fish'; and ampcmd \$argv" -- "$@"

@@ -18,6 +18,23 @@ if test -f "$HOME/.ampcmd.conf"
     set config_file "$HOME/.ampcmd.conf"
 end
 
+function _ampcmd_config_get --argument key default
+    set -l config_file "$HOME/.config/ampcmd/config"
+    if test -f "$HOME/.ampcmd.conf"
+        set config_file "$HOME/.ampcmd.conf"
+    end
+    if not test -f "$config_file"
+        echo $default
+        return
+    end
+    set -l value (grep "^$key=" "$config_file" 2>/dev/null | tail -1 | cut -d'=' -f2-)
+    if test -n "$value"
+        echo $value
+    else
+        echo $default
+    end
+end
+
 function _ampcmd_read_config
     set -l config_file "$HOME/.config/ampcmd/config"
     if test -f "$HOME/.ampcmd.conf"
@@ -190,6 +207,26 @@ TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  ESC cancel' \
     else
         # If we are in a tty and not being captured, execute directly
         if status is-interactive
+            if test (_ampcmd_config_get SHOW_FULL_AMPCMD true) = true
+                set -l divider_style (_ampcmd_config_get AMPCMD_DIVIDER dashed)
+                set -l term_width (tput cols 2>/dev/null; or echo 80)
+                set -l dw (_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)
+                set -l width $term_width
+                switch $dw
+                    case half
+                        set width (math "$term_width / 2")
+                    case full
+                        set width $term_width
+                    case '*'
+                        set width (math $dw 2>/dev/null; or echo $term_width)
+                end
+                echo $chain
+                if test "$divider_style" = solid
+                    echo (string repeat -n $width ─)
+                else
+                    echo (string repeat -n $width -)
+                end
+            end
             commandline -r "$chain"
             commandline -f execute
         else

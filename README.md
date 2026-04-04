@@ -116,20 +116,6 @@ ln -sf ~/Code/ampcmd/src/ampcmd-preview.sh ~/.config/fish/functions/ampcmd-previ
 echo "bind \ch 'ampcmd | begin; read -l key; read -l cmd; and begin; switch \"\$key\"; case ctrl-y; echo -n \"\$cmd\" | pbcopy; or echo -n \"\$cmd\" | xclip -selection clipboard; or echo -n \"\$cmd\" | xsel --clipboard; echo \"Copied to clipboard\"; case \"*\"; commandline -- \"\$cmd\"; commandline -f execute; end; end; end'" >> ~/.config/fish/config.fish
 ```
 
-## Uninstallation
-
-### Homebrew
-
-```bash
-brew uninstall ampcmd
-brew untap soundslikeinfo/ampcmd
-```
-
-Remove the shell configuration lines you added to:
-- `~/.zshrc` (zsh)
-- `~/.bashrc` (bash)
-- `~/.config/fish/config.fish` (fish)
-
 ### Manual Installation
 
 ```bash
@@ -144,13 +130,6 @@ rm -rf ~/.local/share/ampcmd
 rm ~/.config/fish/functions/ampcmd.fish
 rm ~/.config/fish/functions/ampcmd-preview.sh
 # And remove the bind command from ~/.config/fish/config.fish
-```
-
-### Remove History File
-
-```bash
-rm ~/.ampcmd_history
-rm -rf ~/.config/ampcmd
 ```
 
 ## Usage
@@ -323,6 +302,27 @@ If you see an error about empty history or `fzf` shows a list of files instead o
 1.  **Verify history exists:** Run `history search --max 10`. If it returns nothing, you have no history.
 2.  **Check history location:** `fish` history is normally at `~/.local/share/fish/fish_history`.
 3.  **Permissions:** Ensure your user can read the history file.
+
+## Uninstallation
+
+### Remove History File
+
+```bash
+rm ~/.ampcmd_history
+rm -rf ~/.config/ampcmd
+```
+
+### Homebrew
+
+```bash
+brew uninstall ampcmd
+brew untap soundslikeinfo/ampcmd
+```
+
+Remove the shell configuration lines you added to:
+- `~/.zshrc` (zsh)
+- `~/.bashrc` (bash)
+- `~/.config/fish/config.fish` (fish)
 
 ## License
 
