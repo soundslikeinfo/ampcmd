@@ -15,3 +15,14 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: soundslikeinfo/homebrew-ampcmd
           formula: ampcmd
+
+      - name: Auto-merge PR
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          sleep 10
+          PR_NUMBER=$(gh pr list --repo soundslikeinfo/homebrew-ampcmd --json number --jq '.[0].number' --state open)
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr merge $PR_NUMBER --repo soundslikeinfo/homebrew-ampcmd --squash --auto
+            echo "✅ Merged PR #$PR_NUMBER"
+          fi
