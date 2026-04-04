@@ -4,12 +4,20 @@
 
 set -e
 
-# Determine script directory
-# Homebrew: /opt/homebrew/bin/ampcmd symlink -> ../Cellar/ampcmd/version/bin/ampcmd
-#            libexec is at ../Cellar/ampcmd/version/libexec
-# Manual:    ~/.local/bin/ampcmd executable
-#            libexec is at ../share/ampcmd/libexec
+# Resolve symlinks to find the real script location.
+# Homebrew installs a symlink at /opt/homebrew/bin/ampcmd -> Cellar/ampcmd/VERSION/bin/ampcmd
+# Using $0 directly gives the symlink path, so ../libexec resolves to /opt/homebrew/libexec
+# instead of the Cellar versioned directory. We must follow symlinks first.
+# macOS does not have readlink -f, so we use a POSIX-compatible loop.
 WRAPPER_PATH="$0"
+while [ -L "$WRAPPER_PATH" ]; do
+    _dir="$(cd "$(dirname "$WRAPPER_PATH")" && pwd)"
+    WRAPPER_PATH="$(readlink "$WRAPPER_PATH")"
+    case "$WRAPPER_PATH" in
+        /*) ;;
+        *) WRAPPER_PATH="$_dir/$WRAPPER_PATH" ;;
+    esac
+done
 WRAPPER_DIR="$(cd "$(dirname "$WRAPPER_PATH")" && pwd)"
 
 # Try Homebrew Cellar structure first (wrapper is symlink or in Cellar)
