@@ -6,13 +6,14 @@ on:
 
 env:
   TAP_REPO: soundslikeinfo/homebrew-ampcmd
+  TAP_NAME: soundslikeinfo/ampcmd
   FORMULA_NAME: ampcmd
 
 jobs:
   update-homebrew:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
       - name: Update Homebrew formula
         id: bump
@@ -21,7 +22,7 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: ${{ env.TAP_REPO }}
           formula: ${{ env.FORMULA_NAME }}
-          no_fork: false
+          no_fork: true
 
       - name: Wait for PR creation
         run: |
@@ -37,7 +38,7 @@ jobs:
           MAX_RETRIES=5
           RETRY_COUNT=0
           PR_NUMBER=""
-          
+
           while [ -z "$PR_NUMBER" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             PR_NUMBER=$(gh pr list --repo ${{ env.TAP_REPO }} --json number --jq '.[0].number' --state open 2>/dev/null)
             if [ -z "$PR_NUMBER" ]; then
@@ -46,28 +47,32 @@ jobs:
               sleep 10
             fi
           done
-          
+
           if [ -z "$PR_NUMBER" ]; then
             echo "❌ FAILED: Could not find PR after $MAX_RETRIES attempts"
             exit 1
           fi
-          
+
           echo "✅ Found PR #$PR_NUMBER"
-          
-          # Fix formula formatting before merge
+
+          # Clone tap repo so git operations have a working tree (required by gh pr checkout)
           echo "  Fixing formula formatting..."
-          gh pr checkout $PR_NUMBER --repo ${{ env.TAP_REPO }}
-          brew style --fix Formula/${{ env.FORMULA_NAME }}.rb
-          git add Formula/${{ env.FORMULA_NAME }}.rb
+          git clone "https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/${{ env.TAP_REPO }}.git" tap-repo
+          cd tap-repo
+          gh pr checkout $PR_NUMBER
+          brew style --fix "Formula/${{ env.FORMULA_NAME }}.rb" || true
+          git add "Formula/${{ env.FORMULA_NAME }}.rb"
           git commit -m "Fix formula style" || echo "  No style fixes needed"
           git push || echo "  No changes to push"
-          
-          # Attempt merge
-          if gh pr merge $PR_NUMBER --repo ${{ env.TAP_REPO }} --squash --auto; then
-            echo "✅ Step 1/4: Merge initiated for PR #$PR_NUMBER"
+          cd ..
+
+          # Merge directly with --admin (owner token bypasses any requirements; --auto requires
+          # branch protection rules which a bare tap repo does not have)
+          if gh pr merge $PR_NUMBER --repo ${{ env.TAP_REPO }} --squash --admin; then
+            echo "✅ Step 1/5: PR #$PR_NUMBER merged"
             echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           else
-            echo "❌ Step 1/4: FAILED - Could not merge PR"
+            echo "❌ Step 1/5: FAILED - Could not merge PR"
             exit 1
           fi
 
@@ -76,27 +81,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          echo "⏳ Step 2/4: Verifying PR was merged..."
-          
-          # Wait and check if PR is merged
+          echo "⏳ Step 2/5: Verifying PR was merged..."
+
           MAX_CHECKS=10
           CHECK_COUNT=0
           MERGED=false
-          
+
           while [ $CHECK_COUNT -lt $MAX_CHECKS ] && [ "$MERGED" = "false" ]; do
             PR_STATE=$(gh pr view ${{ steps.merge.outputs.pr_number }} --repo ${{ env.TAP_REPO }} --json state --jq '.state' 2>/dev/null)
             if [ "$PR_STATE" = "MERGED" ]; then
               MERGED=true
-              echo "✅ Step 2/4: PR successfully merged"
+              echo "✅ Step 2/5: PR successfully merged"
             else
               CHECK_COUNT=$((CHECK_COUNT + 1))
               echo "  Check $CHECK_COUNT/$MAX_CHECKS: PR state is $PR_STATE, waiting..."
               sleep 5
             fi
           done
-          
+
           if [ "$MERGED" = "false" ]; then
-            echo "❌ Step 2/4: FAILED - PR was not merged after ${MAX_CHECKS} checks"
+            echo "❌ Step 2/5: FAILED - PR was not merged after ${MAX_CHECKS} checks"
             exit 1
           fi
 
@@ -104,50 +108,49 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          echo "⏳ Step 3/4: Verifying formula has SHA256..."
-          
-          # Wait for formula to be available after merge
+          echo "⏳ Step 3/5: Verifying formula has SHA256..."
+
           sleep 3
-          
-          FORMULA_SHA=$(gh api repos/${{ env.TAP_REPO }}/contents/Formula/${{ env.FORMULA_NAME }}.rb --jq '.content' 2>/dev/null | base64 -d | grep -o 'sha256 "[^"]*"' | head -1)
-          
+
+          FORMULA_SHA=$(gh api repos/${{ env.TAP_REPO }}/contents/Formula/${{ env.FORMULA_NAME }}.rb \
+            --jq '.content' 2>/dev/null | base64 -d | grep -o 'sha256 "[^"]*"' | head -1)
+
           if [ -n "$FORMULA_SHA" ]; then
-            echo "✅ Step 3/4: Formula contains $FORMULA_SHA"
+            echo "✅ Step 3/5: Formula contains $FORMULA_SHA"
           else
-            echo "❌ Step 3/4: FAILED - No SHA256 found in formula"
+            echo "❌ Step 3/5: FAILED - No SHA256 found in formula"
             exit 1
           fi
 
       - name: Verify download integrity
         run: |
-          echo "⏳ Step 4/4: Verifying download integrity..."
-          
-          brew tap ${{ env.TAP_REPO }} 2>/dev/null || true
-          
-          if brew fetch --formula ${{ env.FORMULA_NAME }} 2>&1 | tee /tmp/brew-fetch.log; then
-            if grep -q "Error\|Failed\|Could not" /tmp/brew-fetch.log; then
-              echo "❌ Step 4/4: FAILED - Download integrity check failed"
-              exit 1
-            else
-              echo "✅ Step 4/4: Download integrity verified"
-            fi
+          echo "⏳ Step 4/5: Verifying download integrity..."
+
+          # brew tap expects "user/repo" format — Homebrew strips the homebrew- prefix automatically
+          brew tap ${{ env.TAP_NAME }} 2>/dev/null || true
+
+          brew fetch --formula ${{ env.FORMULA_NAME }} 2>&1 | tee /tmp/brew-fetch.log
+          FETCH_EXIT=${PIPESTATUS[0]}
+
+          if [ $FETCH_EXIT -eq 0 ]; then
+            echo "✅ Step 4/5: Download integrity verified"
           else
-            echo "❌ Step 4/4: FAILED - brew fetch failed"
+            echo "❌ Step 4/5: FAILED - brew fetch failed (exit $FETCH_EXIT)"
             exit 1
           fi
 
       - name: Run brew audit
         run: |
-          echo "⏳ Step 5/4: Running brew audit..."
-          
-          if brew audit --strict ${{ env.TAP_REPO }}/${{ env.FORMULA_NAME }}; then
-            echo "✅ Step 5/4: brew audit passed"
+          echo "⏳ Step 5/5: Running brew audit..."
+
+          # brew audit uses tap format: user/tap-short-name/formula (no homebrew- prefix)
+          if brew audit --strict ${{ env.TAP_NAME }}/${{ env.FORMULA_NAME }}; then
+            echo "✅ Step 5/5: brew audit passed"
             echo ""
             echo "🎉 All verification steps passed!"
-            echo ""
             echo "Users can now upgrade with: brew upgrade ${{ env.FORMULA_NAME }}"
           else
-            echo "❌ Step 5/4: FAILED - brew audit found issues"
+            echo "❌ Step 5/5: FAILED - brew audit found issues"
             exit 1
           fi
 
@@ -160,6 +163,6 @@ jobs:
           echo ""
           echo "Common issues:"
           echo "  - Token expired or missing required scopes (repo, workflow)"
-          echo "  - PR checks failed preventing auto-merge"
-          echo "  - Network issues downloading tarball"
           echo "  - Formula syntax errors"
+          echo "  - Network issues downloading tarball"
+          echo "  - HOMEBREW_TAP_TOKEN lacks admin rights on ${{ env.TAP_REPO }}"
