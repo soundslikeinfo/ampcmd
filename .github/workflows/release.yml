@@ -4,25 +4,154 @@ on:
   release:
     types: [published]
 
+env:
+  TAP_REPO: soundslikeinfo/homebrew-ampcmd
+  FORMULA_NAME: ampcmd
+
 jobs:
   update-homebrew:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
+    
     steps:
       - name: Update Homebrew formula
+        id: bump
         uses: dawidd6/action-homebrew-bump-formula@v3
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          tap: soundslikeinfo/homebrew-ampcmd
-          formula: ampcmd
+          tap: ${{ env.TAP_REPO }}
+          formula: ${{ env.FORMULA_NAME }}
+          no_fork: false
 
-      - name: Auto-merge PR
+      - name: Wait for PR creation
+        run: |
+          echo "⏳ Waiting for PR to be created..."
+          sleep 15
+
+      - name: Find and auto-merge PR
+        id: merge
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          sleep 10
-          PR_NUMBER=$(gh pr list --repo soundslikeinfo/homebrew-ampcmd --json number --jq '.[0].number' --state open)
-          if [ -n "$PR_NUMBER" ]; then
-            gh pr merge $PR_NUMBER --repo soundslikeinfo/homebrew-ampcmd --squash --auto
-            echo "✅ Merged PR #$PR_NUMBER"
+          # Find the PR with retry logic
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          PR_NUMBER=""
+          
+          while [ -z "$PR_NUMBER" ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            PR_NUMBER=$(gh pr list --repo ${{ env.TAP_REPO }} --json number --jq '.[0].number' --state open 2>/dev/null)
+            if [ -z "$PR_NUMBER" ]; then
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "  Attempt $RETRY_COUNT/$MAX_RETRIES: PR not found yet, waiting..."
+              sleep 10
+            fi
+          done
+          
+          if [ -z "$PR_NUMBER" ]; then
+            echo "❌ FAILED: Could not find PR after $MAX_RETRIES attempts"
+            exit 1
           fi
+          
+          echo "✅ Found PR #$PR_NUMBER"
+          
+          # Attempt merge
+          if gh pr merge $PR_NUMBER --repo ${{ env.TAP_REPO }} --squash --auto; then
+            echo "✅ Step 1/4: Merge initiated for PR #$PR_NUMBER"
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Step 1/4: FAILED - Could not merge PR"
+            exit 1
+          fi
+
+      - name: Verify merge completed
+        if: steps.merge.outputs.pr_number
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          echo "⏳ Step 2/4: Verifying PR was merged..."
+          
+          # Wait and check if PR is merged
+          MAX_CHECKS=10
+          CHECK_COUNT=0
+          MERGED=false
+          
+          while [ $CHECK_COUNT -lt $MAX_CHECKS ] && [ "$MERGED" = "false" ]; do
+            PR_STATE=$(gh pr view ${{ steps.merge.outputs.pr_number }} --repo ${{ env.TAP_REPO }} --json state --jq '.state' 2>/dev/null)
+            if [ "$PR_STATE" = "MERGED" ]; then
+              MERGED=true
+              echo "✅ Step 2/4: PR successfully merged"
+            else
+              CHECK_COUNT=$((CHECK_COUNT + 1))
+              echo "  Check $CHECK_COUNT/$MAX_CHECKS: PR state is $PR_STATE, waiting..."
+              sleep 5
+            fi
+          done
+          
+          if [ "$MERGED" = "false" ]; then
+            echo "❌ Step 2/4: FAILED - PR was not merged after ${MAX_CHECKS} checks"
+            exit 1
+          fi
+
+      - name: Verify formula has SHA256
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          echo "⏳ Step 3/4: Verifying formula has SHA256..."
+          
+          # Wait for formula to be available after merge
+          sleep 3
+          
+          FORMULA_SHA=$(gh api repos/${{ env.TAP_REPO }}/contents/Formula/${{ env.FORMULA_NAME }}.rb --jq '.content' 2>/dev/null | base64 -d | grep -o 'sha256 "[^"]*"' | head -1)
+          
+          if [ -n "$FORMULA_SHA" ]; then
+            echo "✅ Step 3/4: Formula contains $FORMULA_SHA"
+          else
+            echo "❌ Step 3/4: FAILED - No SHA256 found in formula"
+            exit 1
+          fi
+
+      - name: Verify download integrity
+        run: |
+          echo "⏳ Step 4/4: Verifying download integrity..."
+          
+          brew tap ${{ env.TAP_REPO }} 2>/dev/null || true
+          
+          if brew fetch --formula ${{ env.FORMULA_NAME }} 2>&1 | tee /tmp/brew-fetch.log; then
+            if grep -q "Error\|Failed\|Could not" /tmp/brew-fetch.log; then
+              echo "❌ Step 4/4: FAILED - Download integrity check failed"
+              exit 1
+            else
+              echo "✅ Step 4/4: Download integrity verified"
+            fi
+          else
+            echo "❌ Step 4/4: FAILED - brew fetch failed"
+            exit 1
+          fi
+
+      - name: Run brew audit
+        run: |
+          echo "⏳ Step 5/4: Running brew audit..."
+          
+          if brew audit --strict ${{ env.TAP_REPO }}/${{ env.FORMULA_NAME }}; then
+            echo "✅ Step 5/4: brew audit passed"
+            echo ""
+            echo "🎉 All verification steps passed!"
+            echo ""
+            echo "Users can now upgrade with: brew upgrade ${{ env.FORMULA_NAME }}"
+          else
+            echo "❌ Step 5/4: FAILED - brew audit found issues"
+            exit 1
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo ""
+          echo "❌ WORKFLOW FAILED"
+          echo "Please check the logs above for the specific failure."
+          echo ""
+          echo "Common issues:"
+          echo "  - Token expired or missing required scopes (repo, workflow)"
+          echo "  - PR checks failed preventing auto-merge"
+          echo "  - Network issues downloading tarball"
+          echo "  - Formula syntax errors"
