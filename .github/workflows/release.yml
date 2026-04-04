@@ -54,6 +54,14 @@ jobs:
           
           echo "✅ Found PR #$PR_NUMBER"
           
+          # Fix formula formatting before merge
+          echo "  Fixing formula formatting..."
+          gh pr checkout $PR_NUMBER --repo ${{ env.TAP_REPO }}
+          brew style --fix Formula/${{ env.FORMULA_NAME }}.rb
+          git add Formula/${{ env.FORMULA_NAME }}.rb
+          git commit -m "Fix formula style" || echo "  No style fixes needed"
+          git push || echo "  No changes to push"
+          
           # Attempt merge
           if gh pr merge $PR_NUMBER --repo ${{ env.TAP_REPO }} --squash --auto; then
             echo "✅ Step 1/4: Merge initiated for PR #$PR_NUMBER"
