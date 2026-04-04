@@ -16,7 +16,7 @@ printf "\033[1;36m── Selected Commands ──\033[0m\n"
 i=1
 for line in "$@"; do
 	# Strip the line number prefix (e.g., "  16 │ ")
-	cmd=$(printf "%s" "$line" | sed 's/^[[:space:]]*[0-9]* │ //')
+	cmd=$(printf "%s" "$line" | sed 's/^[^│]*│ //')
 	printf "  %d  %s\n" "$i" "$cmd"
 	i=$((i + 1))
 done
@@ -25,7 +25,7 @@ printf "\n"
 printf "\033[1;32m── Will Execute ──\033[0m\n"
 first=1
 for line in "$@"; do
-	cmd=$(printf "%s" "$line" | sed 's/^[[:space:]]*[0-9]* │ //')
+	cmd=$(printf "%s" "$line" | sed 's/^[^│]*│ //')
 	if [ $first -eq 1 ]; then
 		printf "%s" "$cmd"
 		first=0

@@ -51,7 +51,7 @@ source $(brew --prefix ampcmd)/libexec/ampcmd.fish
 bind \ch 'ampcmd'
 ```
 
-**Note:** You can run `ampcmd` directly (command-line mode) without sourcing, but shell integration (CTRL-H keybinding) requires sourcing.
+**Note:** You can run `ampcmd` directly (command-line mode) without sourcing, but shell integration (CTRL-H keybinding) requires sourcing. If your chains include aliases or custom functions, see [My alias or custom function wasn't recognized](#my-alias-or-custom-function-wasnt-recognized).
 
 ### curl (One-liner)
 
@@ -188,6 +188,25 @@ DISALLOW_HISTORY=true
 
 This prevents ampcmd from recording your chains.
 
+### Sourcing aliases before execution
+
+When running `ampcmd` as a standalone command, it spawns a new shell that doesn't load your shell profile. If your chains include aliases or functions defined in your shell config, use `SOURCE_BEFORE_EXEC` to load the specific files that define them:
+
+```bash
+# ~/.config/ampcmd/config
+
+# Single file
+SOURCE_BEFORE_EXEC=~/.zsh/05-aliases.zsh
+
+# Multiple files (colon-separated)
+SOURCE_BEFORE_EXEC=~/.zsh/05-aliases.zsh:~/.zsh/06-functions.zsh
+```
+
+> [!TIP]
+> Point directly at the file(s) that define your aliases or functions — avoid sourcing your full shell profile (e.g. `~/.zshrc`) as it may trigger welcome messages, plugin initialization, or other interactive-only startup code.
+>
+> This is only needed for the standalone `ampcmd` command. The CTRL-H widget runs inside your current shell session and already has access to all your aliases.
+
 ## Keybindings
 
 | Key | Action |
@@ -294,6 +313,39 @@ bash src/ampcmd.bash
 ```
 
 ## Troubleshooting
+
+### My alias or custom function wasn't recognized
+
+When you run `ampcmd` as a standalone command, it executes in a new shell that doesn't load your shell profile — so aliases and functions defined in `~/.zshrc`, `~/.bashrc`, or similar files aren't available.
+
+**Solution:** Add a `SOURCE_BEFORE_EXEC` entry to `~/.config/ampcmd/config` pointing at the file(s) where your aliases or functions are defined:
+
+```bash
+# Single file
+SOURCE_BEFORE_EXEC=~/.zsh/05-aliases.zsh
+
+# Multiple files (colon-separated)
+SOURCE_BEFORE_EXEC=~/.zsh/05-aliases.zsh:~/.zsh/06-functions.zsh
+```
+
+> [!TIP]
+> Avoid pointing at your full shell profile (e.g. `~/.zshrc`) — it may trigger welcome messages or other interactive-only startup code. Target only the file(s) that define what you need.
+
+**Alternatively, use the CTRL-H widget** — it runs inside your current shell session where all aliases are already loaded, so `SOURCE_BEFORE_EXEC` is never needed. To enable it, add to your shell config:
+
+```bash
+# Zsh (~/.zshrc)
+source $(brew --prefix ampcmd)/libexec/ampcmd.plugin.zsh
+
+# Bash (~/.bashrc)
+source $(brew --prefix ampcmd)/libexec/ampcmd.bash
+
+# Fish (~/.config/fish/config.fish)
+source $(brew --prefix ampcmd)/libexec/ampcmd.fish
+bind \ch 'ampcmd'
+```
+
+Then reload your shell: `exec $SHELL`
 
 ### Fish: "Error: Shell history is empty" or fzf shows file list
 

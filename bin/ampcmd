@@ -5,8 +5,8 @@
 set -e
 
 # Resolve symlinks to find the real script location.
-# Homebrew installs a symlink at /opt/homebrew/bin/ampcmd -> Cellar/ampcmd/VERSION/bin/ampcmd
-# Using $0 directly gives the symlink path, so ../libexec resolves to /opt/homebrew/libexec
+# Homebrew installs a symlink at $(brew --prefix)/bin/ampcmd -> Cellar/ampcmd/VERSION/bin/ampcmd
+# Using $0 directly gives the symlink path, so ../libexec resolves to $(brew --prefix)/libexec
 # instead of the Cellar versioned directory. We must follow symlinks first.
 # macOS does not have readlink -f, so we use a POSIX-compatible loop.
 WRAPPER_PATH="$0"

@@ -31,6 +31,16 @@ _ampcmd_config_get() {
     echo "${value:-$default}"
 }
 
+_ampcmd_source_before_exec() {
+    local files="$(_ampcmd_config_get SOURCE_BEFORE_EXEC)"
+    [[ -z "$files" ]] && return
+    local f
+    while IFS= read -r f; do
+        f="${f/#\~/$HOME}"
+        [[ -f "$f" ]] && source "$f" 2>/dev/null || true
+    done < <(printf '%s' "$files" | tr ':' '\n')
+}
+
 _ampcmd_read_config() {
     local disallow_history="false"
     if [[ -f "$_CHAINHIST_CONFIG" ]]; then
@@ -62,7 +72,6 @@ ampcmd() {
             return 1
         fi
 
-        local preview_cmd="\"${_ampcmd_script_dir}/ampcmd-preview.sh\" {+}"
         local history_selection
         history_selection=$(tac "$_CHAINHIST_HISTORY" | \
             fzf \
@@ -72,9 +81,7 @@ ampcmd() {
                 --bind 'ctrl-y:accept' \
                 --bind 'start:first' \
                 --prompt="Select from history > " \
-                --preview "$preview_cmd" \
-                --preview-window 'right:40%:border-left:wrap' \
-                --preview-label=' Command ' \
+                --no-preview \
                 --no-info 2>/dev/null)
 
         if [[ -z "$history_selection" ]]; then
@@ -97,6 +104,24 @@ ampcmd() {
             { echo "clipboard not available" && return 1 }
             echo "Copied to clipboard: $chain"
         else
+            if [[ "$(_ampcmd_config_get SHOW_FULL_AMPCMD true)" == "true" ]]; then
+                local divider_style="$(_ampcmd_config_get AMPCMD_DIVIDER dashed)"
+                local term_width divider_width width
+                term_width=$(tput cols 2>/dev/null) || term_width=${COLUMNS:-80}
+                divider_width="$(_ampcmd_config_get AMPCMD_DIVIDER_WIDTH full)"
+                case "$divider_width" in
+                    half) width=$(( term_width / 2 )) ;;
+                    full) width=$term_width ;;
+                    *)    width=${divider_width:-$term_width} ;;
+                esac
+                echo "$chain"
+                if [[ "$divider_style" == "solid" ]]; then
+                    printf '─%.0s' {1..$width}; echo
+                else
+                    printf -- '-%.0s' {1..$width}; echo
+                fi
+            fi
+            _ampcmd_source_before_exec
             eval "$chain"
         fi
         return 0
@@ -192,6 +217,7 @@ ampcmd() {
                     printf -- '-%.0s' {1..$width}; echo
                 fi
             fi
+            _ampcmd_source_before_exec
             eval "$chain"
             _ampcmd_record_history "$chain"
         fi
