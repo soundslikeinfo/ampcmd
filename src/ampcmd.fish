@@ -58,6 +58,25 @@ function _ampcmd_record_history --argument chain
     end
 end
 
+function _ampcmd_normalize_command --argument cmd
+    string replace -a '\\n' ' ' -- "$cmd" | string trim
+end
+
+function _ampcmd_validate_chain --argument chain
+    set chain (_ampcmd_normalize_command "$chain")
+    set -l trimmed (string trim -- "$chain")
+    if test -z "$trimmed"
+        echo "Error: no commands selected." >&2
+        return 1
+    end
+    if not fish -n -c "$chain" >/dev/null 2>&1
+        echo "Error: selected commands produce invalid shell syntax; refusing to run or save." >&2
+        echo "Hint: look for an empty command between operators, such as '&& &&'." >&2
+        return 1
+    end
+    return 0
+end
+
 function ampcmd --argument num_lines
     if not type -q fzf
         echo "Error: fzf is not installed. Please install it to use ampcmd." >&2
@@ -101,10 +120,12 @@ Select a chain to run' \
 
         set key (echo $fzf_output[1])
         set chain (printf "%s\n" $fzf_output[2..-1] | sed 's/^[0-9-]* [0-9:]* │ //')
+        set chain (_ampcmd_normalize_command "$chain")
 
         if test -z "$chain"
             return 1
         end
+        _ampcmd_validate_chain "$chain"; or return 1
 
         if test "$key" = "ctrl-y"
             if type -q pbcopy
@@ -149,9 +170,9 @@ Select a chain to run' \
     # Pre-generate both datasets so CTRL-L can reload without leaving fzf
     set -l hist_input_tmp (mktemp /tmp/ampcmd_hist.XXXXXX)
     set -l chains_input_tmp (mktemp /tmp/ampcmd_chains.XXXXXX)
-    printf "%s\n" $history_items | nl -w3 -s' │ ' > $hist_input_tmp
+    printf "%s\n" $history_items | sed 's/\\n/ /g; /^[[:space:]]*$/d' | nl -w3 -s' │ ' > $hist_input_tmp
     if test -f "$HOME/.ampcmd_history"
-        tac "$HOME/.ampcmd_history" | sed 's/^[0-9-]* [0-9:]* │ //' | nl -w3 -s' │ ' > $chains_input_tmp
+        tac "$HOME/.ampcmd_history" | sed 's/^[0-9-]* [0-9:]* │ //; s/\\n/ /g; /^[[:space:]]*$/d' | nl -w3 -s' │ ' > $chains_input_tmp
     end
 
     set -l ctrl_l_bind "ctrl-l:transform:if [ \"\${FZF_PROMPT}\" = 'history > ' ]; then echo \"reload(cat $chains_input_tmp)+change-prompt(chains > )+change-preview-label( Chain History )\"; else echo \"reload(cat $hist_input_tmp)+change-prompt(history > )+change-preview-label( Command Queue )\"; fi"
@@ -194,6 +215,11 @@ TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  CTRL-R = Clear  |  CTRL-L
     set chain ""
     set first true
     for cmd in $selections
+        set cmd (_ampcmd_normalize_command "$cmd")
+        set -l trimmed_cmd (string trim -- "$cmd")
+        if test -z "$trimmed_cmd"
+            continue
+        end
         if test "$first" = true
             set chain "$cmd"
             set first false
@@ -201,6 +227,7 @@ TAB/SPACE toggle  |  ENTER = Run  |  CTRL-Y = Copy  |  CTRL-R = Clear  |  CTRL-L
             set chain "$chain && $cmd"
         end
     end
+    _ampcmd_validate_chain "$chain"; or return 1
 
     if test "$key" = "ctrl-y"
         if type -q pbcopy

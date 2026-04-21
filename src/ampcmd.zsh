@@ -64,6 +64,27 @@ _ampcmd_record_history() {
     fi
 }
 
+_ampcmd_normalize_command() {
+    local cmd="$1"
+    cmd="${cmd//\\n/ }"
+    echo "$cmd" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+_ampcmd_validate_chain() {
+    local chain="$1"
+    chain="$(_ampcmd_normalize_command "$chain")"
+    if [[ -z "${chain//[[:space:]]/}" ]]; then
+        echo "Error: no commands selected." >&2
+        return 1
+    fi
+    if ! zsh -n -c "$chain" >/dev/null 2>&1; then
+        echo "Error: selected commands produce invalid shell syntax; refusing to run or save." >&2
+        echo "Hint: look for an empty command between operators, such as '&& &&'." >&2
+        return 1
+    fi
+    return 0
+}
+
 ampcmd() {
     if ! command -v fzf &>/dev/null; then
         echo "Error: fzf is not installed. Please install it to use ampcmd." >&2
@@ -97,10 +118,12 @@ ampcmd() {
         local chain
         key=$(echo "$history_selection" | head -n1)
         chain=$(echo "$history_selection" | tail -n +2 | sed 's/^[0-9-]* [0-9:]* │ //')
+        chain="$(_ampcmd_normalize_command "$chain")"
 
         if [[ -z "$chain" ]]; then
             return 1
         fi
+        _ampcmd_validate_chain "$chain" || return 1
 
         if [[ "$key" == "ctrl-y" ]]; then
             echo -n "$chain" | pbcopy 2>/dev/null || \
@@ -149,8 +172,8 @@ ampcmd() {
     local hist_tmp chains_tmp
     hist_tmp=$(mktemp /tmp/ampcmd_hist.XXXXXX)
     chains_tmp=$(mktemp /tmp/ampcmd_chains.XXXXXX)
-    fc -ln -"$num_lines" 2>/dev/null | awk '!seen[$0]++' | tail -n "$num_lines" | tac | nl -w3 -s' │ ' > "$hist_tmp"
-    [[ -f "$_CHAINHIST_HISTORY" ]] && tac "$_CHAINHIST_HISTORY" | sed 's/^[0-9-]* [0-9:]* │ //' | nl -w3 -s' │ ' > "$chains_tmp"
+    fc -ln -"$num_lines" 2>/dev/null | sed 's/\\n/ /g; /^[[:space:]]*$/d' | awk '!seen[$0]++' | tail -n "$num_lines" | tac | nl -w3 -s' │ ' > "$hist_tmp"
+    [[ -f "$_CHAINHIST_HISTORY" ]] && tac "$_CHAINHIST_HISTORY" | sed 's/^[0-9-]* [0-9:]* │ //; s/\\n/ /g; /^[[:space:]]*$/d' | nl -w3 -s' │ ' > "$chains_tmp"
 
     local fzf_output
     fzf_output=$(cat "$hist_tmp" | \
@@ -192,6 +215,8 @@ ampcmd() {
     local chain=""
     local first=true
     while IFS= read -r cmd; do
+        cmd="$(_ampcmd_normalize_command "$cmd")"
+        [[ -z "${cmd//[[:space:]]/}" ]] && continue
         if $first; then
             chain="$cmd"
             first=false
@@ -199,6 +224,7 @@ ampcmd() {
             chain="$chain && $cmd"
         fi
     done <<< "$selections"
+    _ampcmd_validate_chain "$chain" || return 1
 
     if [[ "$output_only" == "1" ]]; then
         # Being captured by widget - output key and chain
